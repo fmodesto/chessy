@@ -28,17 +28,29 @@ public class MoveTables {
     public static long BATT3(int pos, long occupied) { return RAYS[((pos) << 7) | key045(occupied, pos) | 0x4000]; }
     public static long BATT4(int pos, long occupied) { return RAYS[((pos) << 7) | key135(occupied, pos) | 0x6000]; }
 
+    public static int DIR(int from, int to) {
+        if (((from ^ to) & 56) == 0) return 1;
+        if (((from ^ to) & 7) == 0) return 2;
+        return ((from - to) % 7) != 0 ? 3 : 4;
+    }
+
+    public static long MASK(int from, int to) {
+        if (((from ^ to) & 56) == 0) return RAYS[((from) << 7)];
+        if (((from ^ to) & 7) == 0) return RAYS[((from) << 7) | 0x2000];
+        return ((from - to) % 7) != 0 ? RAYS[((from) << 7) | 0x4000] : RAYS[((from) << 7) | 0x6000];
+    }
+
     private static final int FILE_MASK = 0x07;
     private static final int RANK_MASK = 0x38;
     private static final long[] MASK_045 = range(0, 64).mapToLong(i -> createPermutationMask(BIT(i), SW, NE)).toArray();
     private static final long[] MASK_135 = range(0, 64).mapToLong(i -> createPermutationMask(BIT(i), SE, NW)).toArray();
 
-    static final long[] RAYS = initializeRays();
-    static final long[][] PAWN_ATTACK = new long[][] {
+    public static final long[] RAYS = initializeRays();
+    public static final long[][] PAWN_ATTACK = new long[][] {
             range(0, 64).mapToLong(i -> KoggeStone.pawnAttackWhite(BIT(i))).toArray(),
             range(0, 64).mapToLong(i -> KoggeStone.pawnAttackBlack(BIT(i))).toArray() };
-    static final long[] KNIGHT = range(0, 64).mapToLong(i -> KoggeStone.knightMove(BIT(i))).toArray();
-    static final long[] KING = range(0, 64).mapToLong(i -> KoggeStone.kingMove(BIT(i))).toArray();
+    public static final long[] KNIGHT = range(0, 64).mapToLong(i -> KoggeStone.knightMove(BIT(i))).toArray();
+    public static final long[] KING = range(0, 64).mapToLong(i -> KoggeStone.kingMove(BIT(i))).toArray();
 
     private static long[] initializeRays() {
         long[] rays = new long[0x10000];

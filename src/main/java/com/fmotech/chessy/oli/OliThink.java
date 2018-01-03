@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.security.AccessControlException;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.StringTokenizer;
 
@@ -105,11 +106,11 @@ public class OliThink {
 	final static long[] mstack = new long[0x800];
 
 	final static long[] hashxor = new long[4096];
-    public final static long[] rays = new long[0x10000];
+	public final static long[] rays = new long[0x10000];
 	final static long[][] pmoves = new long[2][64];
-	public final static long[][] pcaps = new long[2][192];
-	public final static long[] nmoves = new long[64];
-	public final static long[] kmoves = new long[64];
+	final static long[][] pcaps = new long[2][192];
+	final static long[] nmoves = new long[64];
+	final static long[] kmoves = new long[64];
 	final static int[] _knight = {-17,-10,6,15,17,10,-6,-15};
 	final static int[] _king = {-9,-1,7,8,9,1,-7,-8};
 	final static long[] BIT = new long[64];
@@ -135,7 +136,11 @@ public class OliThink {
 	static int pon = 0;
 	static int sd = 32;
 
-	static int count, flags, mat, onmove, engine =-1;
+	static int count;
+	static int flags;
+	static int mat;
+	public static int onmove;
+	static int engine =-1;
 	final static int[] kingpos = new int[2];
 	final static long[] pieceb = new long[8];
 	final static long[] colorb = new long[2];
@@ -157,7 +162,7 @@ public class OliThink {
 	}
 
 	static boolean book;
-	static void _parse_fen(String fen) {
+	public static void _parse_fen(String fen) {
 		char s, mv = 'w';
 		String pos = "", cas = "", enps = "";
 		int c, i, halfm = 0, fullm = 1, col = 0, row = 7;
@@ -293,15 +298,7 @@ public class OliThink {
 	}
 
 	static byte getLsb(long bm) {
-		int n = (int) LOW32(bm);
-		if (n != 0) {
-			if (LOW16(n) != 0) return LSB[LOW16(n)];
-			else return (byte)(16 | LSB[LOW16(n >> 16)]);
-		} else {
-			n = (int)(bm >> 32);
-			if (LOW16(n) != 0) return (byte)(32 | LSB[LOW16(n)]);
-			else return (byte)(48 | LSB[LOW16(n >> 16)]);
-		}
+		return (byte) Long.numberOfTrailingZeros(bm);
 	}
 
 	static byte _slow_lsb(long bm) {
@@ -317,10 +314,7 @@ public class OliThink {
 	}
 
 	static byte bitcnt (long n) {    
-	     return (byte)(BITC[LOW16(n)]
-	         +  BITC[LOW16(n >> 16)]
-	         +  BITC[LOW16(n >> 32)]
-	         +  BITC[LOW16(n >> 48)]);
+	     return (byte) Long.bitCount(n);
 	}
 
 	static int identPiece(int f) {
@@ -333,28 +327,28 @@ public class OliThink {
 		return ENP;
 	}
 
-    public final static long[] bmask45 = new long[64];
-    public final static long[] bmask135 = new long[64];
-	public static int key000(long b, int f) {
+	final static long[] bmask45 = new long[64];
+	final static long[] bmask135 = new long[64];
+	static int key000(long b, int f) {
 		return (int) ((b >> (f & 56)) & 0x7E);
 	}
 
-    public static int key090(long b, int f) {
+	static int key090(long b, int f) {
         long _b = (b >> (f&7)) & 0x0101010101010101L;
         _b = _b * 0x0080402010080400L;
         return (int)((_b >> 57) & 0x7F);
 	}
 
-    public static int keyDiag(long _b) {
+	static int keyDiag(long _b) {
         _b = _b * 0x0202020202020202L;
         return (int)((_b >> 57) & 0x7F);
 	}
 
-    public static int key045(long b, int f) {
+	static int key045(long b, int f) {
 	   return keyDiag(b & bmask45[f]);
 	}
 
-    public static int key135(long b, int f) {
+	static int key135(long b, int f) {
 	   return keyDiag(b & bmask135[f]);
 	}
 
@@ -517,12 +511,14 @@ public class OliThink {
 		return (t < 2) ? free : (t == 2 ? occ : xray);
 	}
 	
-	static void displaym(int m) {
-		printf(String.valueOf((char)('a' + FROM(m) % 8))
+	static String displaym(int m) {
+		String move = String.valueOf((char)('a' + FROM(m) % 8))
 				+ String.valueOf((char)('1' + FROM(m) / 8))
 				+ String.valueOf((char)('a' + TO(m) % 8))
-				+ String.valueOf((char)('1' + TO(m) / 8)));
-		if (PROM(m) != 0) printf(String.valueOf((char)(pieceChar.charAt(PROM(m))+32)));
+				+ String.valueOf((char)('1' + TO(m) / 8))
+				+ (PROM(m) != 0 ? String.valueOf((char)(pieceChar.charAt(PROM(m))+32)) : "");
+		printf(move);
+		return move;
 	}
 
 	static boolean bioskey() {
@@ -635,7 +631,7 @@ public class OliThink {
 			count &= 0x3FF; //Reset Fifty Counter
 		} else if (p == KING) {
 			if (kingpos[c] == f) kingpos[c] = t; else kingpos[c] = f;
-			flags &= ~(0x140 << c); // Lose castling rights
+			flags &= ~(320 << c); // Lose castling rights
 			if (((f^t)&3) == 2) { // Castle
 				if (t == 6) { f = 7; t = 5; }
 				else if (t == 2) { f = 0; t = 3; }
@@ -965,7 +961,7 @@ public class OliThink {
         if (noncap != 0) generateNonCaps(ch, c, f, pin, ml, mn);
 		movenum[ply] = mn[0];
         return 0;
-    }
+}
 
 
 	static int swap(int m) //SEE Stuff
@@ -1580,10 +1576,12 @@ public class OliThink {
         }
         return pondering ? 0 : -1;
 	}
-	
-	static long perft(int c, int d, int div) {
+
+	public static Map<String, Long> moves = new HashMap<>();
+	public static long perft(int c, int d, int div) {
         int i, ply = 63 - d;
         long n, cnt = 0L;
+        if (div == 1) moves.clear();
 
         generate(attacked(kingpos[c], c), c, ply, 1, 1);
         if (d == 1) return (long)movenum[ply];
@@ -1591,16 +1589,12 @@ public class OliThink {
                 int m = movelist[ply][i];
                 doMove(m, c);
                 cnt += n = perft(c^1, d - 1, 0);
-                if (div != 0) { displaym(m); printf(" " + n + "\n"); }
+                if (div != 0) { moves.put(displaym(m), n); printf(" " + n + "\n"); }
                 undoMove(m, c);
         }
         return cnt;
 	}
-	/*
-force
-setboard 8/8/8/3k4/4Pp2/8/8/4K3 b - e3 0 1
-perft
-	 */
+	
 	static int protV2(String buf) {
 		if (buf.startsWith("protover")) printf("feature setboard=1 myname=\"OliThink " + VER + "\" colors=0 analyze=0 done=1\n");
 		else if (buf.startsWith("xboard")); 

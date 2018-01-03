@@ -33,8 +33,8 @@ public class BitOperations {
     public static int sparseBitCount(long n) {
         int count = 0;
         while (n != 0) {
-            count += 1;
-            n = nextLowestBit(n);
+            n &= (n - 1);
+            count++;
         }
         return count;
     }

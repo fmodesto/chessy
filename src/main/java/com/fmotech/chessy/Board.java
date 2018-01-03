@@ -3,11 +3,17 @@ package com.fmotech.chessy;
 import java.util.Arrays;
 import java.util.Random;
 
+import static com.fmotech.chessy.BitOperations.highInt;
+import static com.fmotech.chessy.BitOperations.joinInts;
+import static com.fmotech.chessy.BitOperations.lowInt;
 import static com.fmotech.chessy.Utils.BIT;
 import static com.fmotech.chessy.Utils.OTHER;
+import static java.lang.Character.isSpaceChar;
+import static java.lang.Character.toUpperCase;
 
 public class Board {
     private static final int CASTLE_MASK = 0xffffffc0;
+    private static final int EN_PASSANT_MASK = 0x0000003f;
     private static final int INCREMENT_FIFTY_PLY = 0x401;
     private static final int FIFTY_MASK = 0x3ff;
     private static final int CASTLING_MASK = 0x140;
@@ -21,12 +27,14 @@ public class Board {
     public static final int QUEEN = 6;
     public static final int KING = 7;
 
-    private static final int EN_PASSANT = 1;
+    public static final int EN_PASSANT = 1;
 
     private static final int[] MATERIAL = { 0, 0, 100, 290, 310, 500, 950, 0 };
-    private static final int[] CASTLE_REVOKE = createCastleRevoke();
+    public static final int[] CASTLE_REVOKE = createCastleRevoke();
     private static final int[] CASTLE_ROOK = createCastleRook();
     private static final long[] ZOBRIST = createZobrist();
+
+    public static final Board INIT = Board.load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
     private long[] bitBoards = new long[8];
     private long[] moveStack = new long[0x400];
@@ -37,6 +45,9 @@ public class Board {
     private int flags = 0;
     private int counter = 0;
     private long hash = 0;
+    private int sideToMove = WHITE;
+
+    private Board() {}
 
     public int pieceType(long bit) {
         if ((bit & bitBoards[PAWN]) != 0) return PAWN;
@@ -61,15 +72,15 @@ public class Board {
     }
 
     public void doMove(int move) {
-        moveStack[ply()] = ((long) counter << 32) | flags;
+        moveStack[ply()] = joinInts(counter, flags);
         move(move);
     }
 
     public void undoMove(int move) {
         long data = moveStack[ply() - 1];
         move(move);
-        counter = (int) (data >>> 32);
-        flags = (int) data;
+        counter = highInt(data);
+        flags = lowInt(data);
     }
 
     private void move(int move) {
@@ -89,7 +100,7 @@ public class Board {
                 to = (to & 7) | (from & 56);
                 capture = PAWN;
             } else if (capture == ROOK && (flags & CASTLE_MASK) != 0) {
-                flags &= CASTLE_REVOKE[piece];
+                flags &= CASTLE_REVOKE[to];
             }
             bitBoards[OTHER(sideToMove)] ^= BIT(to);
             bitBoards[capture] ^= BIT(to);
@@ -113,7 +124,7 @@ public class Board {
                 material[sideToMove] += MATERIAL[Move.promotion(move)] - MATERIAL[PAWN];
             }
         } else if (piece == ROOK && (flags & CASTLE_MASK) != 0) {
-            flags &= CASTLE_REVOKE[piece];
+            flags &= CASTLE_REVOKE[from];
         } else if (piece == KING) {
             kings[sideToMove] = kings[sideToMove] == from ? to : from;
             flags &= ~(CASTLING_MASK << sideToMove);
@@ -134,11 +145,12 @@ public class Board {
         return ZOBRIST[0x400 | flags << 1 | sideToMove];
     }
 
-    public void load(String fen) {
-        Arrays.fill(bitBoards, 0);
+    public static Board load(String fen) {
+        Board board = new Board();
         int pos = 56;
         int index = 0;
-        while (fen.charAt(index) != ' ') {
+        while (isSpaceChar(fen.charAt(index))) index++;
+        while (!isSpaceChar(fen.charAt(index))) {
             char c = fen.charAt(index++);
             if (c == '/') {
                 pos -= 16;
@@ -146,16 +158,52 @@ public class Board {
                 pos += (c - '0');
             } else {
                 int side = Character.isUpperCase(c) ? WHITE : BLACK;
-                int piece = Utils.SYMBOLS.indexOf(Character.toUpperCase(c));
-                bitBoards[side] |= BIT(pos);
-                bitBoards[piece] |= BIT(pos);
-                material[side] += MATERIAL[piece];
-                hash ^= zobrist(side, piece, pos);
+                int piece = Utils.SYMBOLS.indexOf(toUpperCase(c));
+                board.bitBoards[side] |= BIT(pos);
+                board.bitBoards[piece] |= BIT(pos);
+                board.material[side] += MATERIAL[piece];
+                board.hash ^= board.zobrist(side, piece, pos);
                 if (piece == KING)
-                    kings[side] = pos;
+                    board.kings[side] = pos;
                 pos += 1;
             }
         }
+        while (isSpaceChar(fen.charAt(index))) index++;
+        board.sideToMove = fen.charAt(index++) == 'w' ? WHITE : BLACK;
+        while (isSpaceChar(fen.charAt(index))) index++;
+        while (!isSpaceChar(fen.charAt(index))) {
+            char c = fen.charAt(index++);
+            if (c == 'K') board.flags |= BIT(6);
+            if (c == 'k') board.flags |= BIT(7);
+            if (c == 'Q') board.flags |= BIT(8);
+            if (c == 'q') board.flags |= BIT(9);
+        }
+        while (isSpaceChar(fen.charAt(index))) index++;
+        if (fen.charAt(index++) != '-') {
+            int file = fen.charAt(index - 1) - 'a';
+            int rank = fen.charAt(index++) - 'a';
+            board.flags |= 8 * rank + file;
+        }
+        int halfMove = 0;
+        int fullMove = 1;
+        while (fen.length() > index && isSpaceChar(fen.charAt(index))) index++;
+        if (fen.length() > index) {
+            halfMove = 0;
+            while (fen.length() > index && Character.isDigit(fen.charAt(index))) {
+                halfMove *= 10;
+                halfMove += fen.charAt(index++) - '0';
+            }
+        }
+        while (fen.length() > index && isSpaceChar(fen.charAt(index))) index++;
+        if (fen.length() > index) {
+            fullMove = 0;
+            while (fen.length() > index && Character.isDigit(fen.charAt(index))) {
+                fullMove *= 10;
+                fullMove += fen.charAt(index++) - '0';
+            }
+        }
+        board.counter = (fullMove - 1) * 2 + board.sideToMove + (halfMove << 10);
+        return board;
     }
 
     private static long[] createZobrist() {
@@ -197,7 +245,15 @@ public class Board {
     }
 
     public long enPassant(int sideToMove) {
-        return BIT(flags) & (sideToMove == BLACK ? 0xFF0000L : 0xFF0000000000L);
+        return BIT(flags & EN_PASSANT_MASK) & (sideToMove == BLACK ? 0xFF0000L : 0xFF0000000000L);
+    }
+
+    public int enPassantPosition() {
+        return flags & EN_PASSANT_MASK;
+    }
+
+    public long enPassantPawn(int sideToMove) {
+        return sideToMove == BLACK ? enPassant(sideToMove) << 8 : enPassant(sideToMove) >>> 8;
     }
 
     public long castle() {
@@ -223,5 +279,9 @@ public class Board {
 
     public void print() {
         System.out.println(DebugUtils.debug(bitBoards));
+    }
+
+    public int sideToMove() {
+        return sideToMove;
     }
 }
