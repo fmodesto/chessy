@@ -1,6 +1,5 @@
 package com.fmotech.chessy;
 
-import java.util.Arrays;
 import java.util.Random;
 
 import static com.fmotech.chessy.BitOperations.highInt;

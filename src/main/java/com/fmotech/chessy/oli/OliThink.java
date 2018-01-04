@@ -586,7 +586,7 @@ public class OliThink {
 	static byte getDir(int f, int t) {
 		if (((f ^ t) & 56) == 0) return 8;
 		if (((f ^ t) & 7) == 0) return 16;
-		return (byte)(((f - t) % 7) != 0 ? 32 : 64);
+		return (byte)(((f - t) % 9) == 0 ? 32 : 64);
 	}
 
 	/* move is both makeMove and unmakeMove, only for unmakeMove the globalflags have to be restored (counter, castle, enpass...) */

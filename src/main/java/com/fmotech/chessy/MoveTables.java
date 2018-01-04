@@ -31,13 +31,13 @@ public class MoveTables {
     public static int DIR(int from, int to) {
         if (((from ^ to) & 56) == 0) return 1;
         if (((from ^ to) & 7) == 0) return 2;
-        return ((from - to) % 7) != 0 ? 3 : 4;
+        return ((from - to) % 9) == 0 ? 3 : 4;
     }
 
     public static long MASK(int from, int to) {
         if (((from ^ to) & 56) == 0) return RAYS[((from) << 7)];
         if (((from ^ to) & 7) == 0) return RAYS[((from) << 7) | 0x2000];
-        return ((from - to) % 7) != 0 ? RAYS[((from) << 7) | 0x4000] : RAYS[((from) << 7) | 0x6000];
+        return ((from - to) % 9) == 0 ? RAYS[((from) << 7) | 0x4000] : RAYS[((from) << 7) | 0x6000];
     }
 
     private static final int FILE_MASK = 0x07;
