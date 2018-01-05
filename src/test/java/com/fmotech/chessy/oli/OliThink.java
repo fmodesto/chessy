@@ -1,5 +1,4 @@
-/* OliThink5 Java(c) Oliver Brausch 04.Mar.2012, ob112@web.de, http://home.arcor.de/dreamlike */
-
+/* OliThink5 Java(c) Oliver Brausch 04.Jan.2018, ob112@web.de, http://brausch.org */
 package com.fmotech.chessy.oli;
 
 import java.io.BufferedReader;
@@ -13,7 +12,7 @@ import java.util.Random;
 import java.util.StringTokenizer;
 
 public class OliThink {
-	final static String VER = "5.3.2 Java";
+	final static String VER = "5.3.3 Java";
 	final static Class<?> otclass = OliThink.class;
 
 	final static int PAWN = 1;
@@ -106,7 +105,7 @@ public class OliThink {
 	final static long[] mstack = new long[0x800];
 
 	final static long[] hashxor = new long[4096];
-	public final static long[] rays = new long[0x10000];
+	final static long[] rays = new long[0x10000];
 	final static long[][] pmoves = new long[2][64];
 	final static long[][] pcaps = new long[2][192];
 	final static long[] nmoves = new long[64];
@@ -136,11 +135,7 @@ public class OliThink {
 	static int pon = 0;
 	static int sd = 32;
 
-	static int count;
-	static int flags;
-	static int mat;
-	public static int onmove;
-	static int engine =-1;
+	static int count, flags, mat, onmove, engine =-1;
 	final static int[] kingpos = new int[2];
 	final static long[] pieceb = new long[8];
 	final static long[] colorb = new long[2];
@@ -162,7 +157,7 @@ public class OliThink {
 	}
 
 	static boolean book;
-	public static void _parse_fen(String fen) {
+	static void _parse_fen(String fen) {
 		char s, mv = 'w';
 		String pos = "", cas = "", enps = "";
 		int c, i, halfm = 0, fullm = 1, col = 0, row = 7;
@@ -298,7 +293,15 @@ public class OliThink {
 	}
 
 	static byte getLsb(long bm) {
-		return (byte) Long.numberOfTrailingZeros(bm);
+		int n = (int) LOW32(bm);
+		if (n != 0) {
+			if (LOW16(n) != 0) return LSB[LOW16(n)];
+			else return (byte)(16 | LSB[LOW16(n >> 16)]);
+		} else {
+			n = (int)(bm >> 32);
+			if (LOW16(n) != 0) return (byte)(32 | LSB[LOW16(n)]);
+			else return (byte)(48 | LSB[LOW16(n >> 16)]);
+		}
 	}
 
 	static byte _slow_lsb(long bm) {
@@ -314,7 +317,10 @@ public class OliThink {
 	}
 
 	static byte bitcnt (long n) {    
-	     return (byte) Long.bitCount(n);
+	     return (byte)(BITC[LOW16(n)]
+	         +  BITC[LOW16(n >> 16)]
+	         +  BITC[LOW16(n >> 32)]
+	         +  BITC[LOW16(n >> 48)]);
 	}
 
 	static int identPiece(int f) {
@@ -511,14 +517,16 @@ public class OliThink {
 		return (t < 2) ? free : (t == 2 ? occ : xray);
 	}
 	
-	static String displaym(int m) {
-		String move = String.valueOf((char)('a' + FROM(m) % 8))
-				+ String.valueOf((char)('1' + FROM(m) / 8))
-				+ String.valueOf((char)('a' + TO(m) % 8))
-				+ String.valueOf((char)('1' + TO(m) / 8))
-				+ (PROM(m) != 0 ? String.valueOf((char)(pieceChar.charAt(PROM(m))+32)) : "");
-		printf(move);
-		return move;
+	static void displaym(int m) {
+		printf(strmove(m));
+	}
+
+	static String strmove(int m) {
+		return String.valueOf((char)('a' + FROM(m) % 8))
+                    + String.valueOf((char)('1' + FROM(m) / 8))
+                    + String.valueOf((char)('a' + TO(m) % 8))
+                    + String.valueOf((char)('1' + TO(m) / 8))
+                    + (PROM(m) != 0 ? String.valueOf((char)(pieceChar.charAt(PROM(m))+32)) : "");
 	}
 
 	static boolean bioskey() {
@@ -1577,8 +1585,8 @@ public class OliThink {
         return pondering ? 0 : -1;
 	}
 
-	public static Map<String, Long> moves = new HashMap<>();
-	public static long perft(int c, int d, int div) {
+	static Map<String, Long> moves = new HashMap<>();
+	static long perft(int c, int d, int div) {
         int i, ply = 63 - d;
         long n, cnt = 0L;
         if (div == 1) moves.clear();
@@ -1589,7 +1597,11 @@ public class OliThink {
                 int m = movelist[ply][i];
                 doMove(m, c);
                 cnt += n = perft(c^1, d - 1, 0);
-                if (div != 0) { moves.put(displaym(m), n); printf(" " + n + "\n"); }
+                if (div != 0) {
+                	moves.put(strmove(m), n);
+					displaym(m);
+					printf(" " + n + "\n");
+                }
                 undoMove(m, c);
         }
         return cnt;
@@ -1686,7 +1698,7 @@ public class OliThink {
 		ReadThread read = new ReadThread();
 		read.start();
 
-        initialize();
+		initialize();
 		
 		if (args.length > 0 && "-sd".equals(args[0])) {
 			time = 99999999;
@@ -1695,9 +1707,6 @@ public class OliThink {
 				if (args.length > 2) { _parse_fen(args[2]); engine = -1; }
 			}
 		}
-		
-		for (i = 0; i < 64; i++) nmobil[i] = (bitcnt(nmoves[i])-1)*6;
-		for (i = 0; i < 64; i++) kmobil[i] = (bitcnt(nmoves[i])/2)*2;
 
 		for (;;) {
 			if (engine == onmove) ex = calc(sd, time);
@@ -1715,36 +1724,39 @@ public class OliThink {
 		}
 	}
 
-    public static void initialize() {
-        for (int i = 0; i < 0x10000; i++) LSB[i] = _slow_lsb(i);
-        for (int i = 0; i < 0x10000; i++) BITC[i] = _bitcnt(i);
-        for (int i = 0; i < 4096; i++) hashxor[i] = _rand_64();
-        for (int i = 0; i < HSIZEB; i++) hashDB[i] = 0L;
-        for (int i = 0; i < HSIZEP; i++) hashDP[i] = 0L;
-        for (int i = 0; i < 64; i++) BIT[i] = 1L << i;
-        for (int i = 0; i < 64; i++) pmoves[0][i] = pawnfree[0][i] = pawnfile[0][i] = pawnhelp[0][i] = 0L;
-        for (int i = 0; i < 192; i++) pcaps[0][i] = 0L;
-        for (int i = 0; i < 64; i++) pmoves[1][i] = pawnfree[1][i] = pawnfile[1][i] = pawnhelp[1][i] = 0L;
-        for (int i = 0; i < 192; i++) pcaps[1][i] = 0L;
-        for (int i = 0; i < 64; i++) bmask45[i] = _bishop45(i, 0L, 0) | BIT[i];
-        for (int i = 0; i < 64; i++) bmask135[i] = _bishop135(i, 0L, 0) | BIT[i];
-        for (int i = 0; i < 64; i++) crevoke[i] = 0x3FF;
-        for (int i = 0; i < 64; i++) kmoves[i] = nmoves[i] = 0L;
-        crevoke[7] ^= BIT[6];
-        crevoke[63] ^= BIT[7];
-        crevoke[0] ^= BIT[8];
-        crevoke[56] ^= BIT[9];
+	static void initialize() {
+		for (int i = 0; i < 0x10000; i++) LSB[i] = _slow_lsb(i);
+		for (int i = 0; i < 0x10000; i++) BITC[i] = _bitcnt(i);
+		for (int i = 0; i < 4096; i++) hashxor[i] = _rand_64();
+		for (int i = 0; i < HSIZEB; i++) hashDB[i] = 0L;
+		for (int i = 0; i < HSIZEP; i++) hashDP[i] = 0L;
+		for (int i = 0; i < 64; i++) BIT[i] = 1L << i;
+		for (int i = 0; i < 64; i++) pmoves[0][i] = pawnfree[0][i] = pawnfile[0][i] = pawnhelp[0][i] = 0L;
+		for (int i = 0; i < 192; i++) pcaps[0][i] = 0L;
+		for (int i = 0; i < 64; i++) pmoves[1][i] = pawnfree[1][i] = pawnfile[1][i] = pawnhelp[1][i] = 0L;
+		for (int i = 0; i < 192; i++) pcaps[1][i] = 0L;
+		for (int i = 0; i < 64; i++) bmask45[i] = _bishop45(i, 0L, 0) | BIT[i];
+		for (int i = 0; i < 64; i++) bmask135[i] = _bishop135(i, 0L, 0) | BIT[i];
+		for (int i = 0; i < 64; i++) crevoke[i] = 0x3FF;
+		for (int i = 0; i < 64; i++) kmoves[i] = nmoves[i] = 0L;
+		crevoke[7] ^= BIT[6];
+		crevoke[63] ^= BIT[7];
+		crevoke[0] ^= BIT[8];
+		crevoke[56] ^= BIT[9];
 
-        try {
-            _init_rays(0x0000, otclass, "_rook0", "key000");
-            _init_rays(0x2000, otclass, "_rook90", "key090");
-            _init_rays(0x4000, otclass, "_bishop45", "key045");
-            _init_rays(0x6000, otclass, "_bishop135", "key135");
-        } catch (Exception e) { e.printStackTrace(); }
-        _init_shorts(nmoves, _knight);
-        _init_shorts(kmoves, _king);
-        _init_pawns(pmoves[0], pcaps[0], pawnfree[0], pawnfile[0], pawnhelp[0], 0);
-        _init_pawns(pmoves[1], pcaps[1], pawnfree[1], pawnfile[1], pawnhelp[1], 1);
-        _readbook("olibook.pgn");
-    }
+		try {
+			_init_rays(0, otclass, "_rook0", "key000");
+			_init_rays(0x2000, otclass, "_rook90", "key090");
+			_init_rays(0x4000, otclass, "_bishop45", "key045");
+			_init_rays(0x6000, otclass, "_bishop135", "key135");
+		} catch (Exception e) { e.printStackTrace(); }
+		_init_shorts(nmoves, _knight);
+		_init_shorts(kmoves, _king);
+		_init_pawns(pmoves[0], pcaps[0], pawnfree[0], pawnfile[0], pawnhelp[0], 0);
+		_init_pawns(pmoves[1], pcaps[1], pawnfree[1], pawnfile[1], pawnhelp[1], 1);
+		_readbook("olibook.pgn");
+
+		for (int i = 0; i < 64; i++) nmobil[i] = (bitcnt(nmoves[i])-1)*6;
+		for (int i = 0; i < 64; i++) kmobil[i] = (bitcnt(nmoves[i])/2)*2;
+	}
 }

@@ -33,7 +33,7 @@ public class KoggeStone {
         return gen;
     }
 
-    private static long shiftOne(long b, int dir8) {
+    public static long shiftOne(long b, int dir8) {
         int r = SHIFT[dir8]; // {+-1,7,8,9}
         return rotateLeft(b, r) & AVOID_WRAP[dir8];
     }
@@ -53,17 +53,5 @@ public class KoggeStone {
         king |= attacks;
         attacks |= shiftOne(king, N) | shiftOne(king, S);
         return attacks;
-    }
-
-    public static long pawnAttackWhite(long pawn) {
-        return shiftOne(pawn, NW) | shiftOne(pawn, NE);
-    }
-
-    public static long pawnAttackBlack(long pawn) {
-        return shiftOne(pawn, SW) | shiftOne(pawn, SE);
-    }
-
-    public static void main(String[] args) {
-        System.out.println(DebugUtils.debug(1L << 17, slide(1L << 17, 0, NE)));
     }
 }

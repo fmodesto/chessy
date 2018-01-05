@@ -1,6 +1,7 @@
 package com.fmotech.chessy.epd;
 
 import com.fmotech.chessy.Board;
+import com.fmotech.chessy.Formatter;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.StringUtils.ordinalIndexOf;
 import static org.apache.commons.lang3.StringUtils.split;
@@ -25,6 +27,22 @@ import static org.apache.commons.lang3.StringUtils.substringBefore;
 public class EpdReader {
 
     private static final PathMatcher EPD = FileSystems.getDefault().getPathMatcher("glob:**.epd");
+
+    public static List<String> getMoves(Epd epd, String type) {
+        return epd.actions.stream()
+                .filter(e -> type.equals(e.action))
+                .flatMap(e -> Arrays.stream(StringUtils.split(e.parameter, " ")))
+                .map(e -> Formatter.moveToFen(Formatter.moveFromSan(epd.board, e)))
+                .collect(toList());
+    }
+
+    public static String getFen(Epd epd, String type) {
+        return epd.actions.stream()
+                .filter(e -> type.equals(e.action))
+                .flatMap(e -> Arrays.stream(StringUtils.split(e.parameter, " ")))
+                .map(e -> Formatter.moveToFen(Formatter.moveFromSan(epd.board, e)))
+                .collect(joining(","));
+    }
 
     public static class Action {
         public final String action;
@@ -42,11 +60,13 @@ public class EpdReader {
     }
 
     public static class Epd {
+        public final String fen;
         public final Board board;
         public final List<Action> actions;
 
-        public Epd(Board board, List<Action> actions) {
-            this.board = board;
+        public Epd(String fen, List<Action> actions) {
+            this.fen = fen;
+            this.board = Board.load(fen);
             this.actions = actions;
         }
 
@@ -90,7 +110,7 @@ public class EpdReader {
                     .filter(e -> Arrays.asList("D1", "D2", "D3", "D4", "D5", "D6", "am", "bm", "pm").contains(e.action))
                     .sorted(Comparator.comparing(e -> e.action))
                     .collect(toList());
-            return actions.isEmpty() ? null : new Epd(Board.load(fen), actions);
+            return actions.isEmpty() ? null : new Epd(fen, actions);
         } catch (Exception e) {
             System.err.println("In: " + line);
             return null;

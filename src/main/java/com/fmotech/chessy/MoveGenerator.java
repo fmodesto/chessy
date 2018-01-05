@@ -28,7 +28,6 @@ import static com.fmotech.chessy.MoveTables.RXRAY2;
 import static com.fmotech.chessy.Utils.BIT;
 import static com.fmotech.chessy.Utils.OTHER;
 import static com.fmotech.chessy.Utils.RANK;
-import static com.fmotech.chessy.Utils.SYMBOLS;
 import static com.fmotech.chessy.Utils.TEST;
 
 public class MoveGenerator {
@@ -53,22 +52,19 @@ public class MoveGenerator {
             long n = perft(OTHER(sideToMove), d - 1, false, board);
             count += n;
             if (div) {
-                System.out.println(displayMove(move) + " " + n + " " + move);
-                moves.put(displayMove(move), n);
+                System.out.println(Formatter.moveToFen(move) + " " + n + " " + move);
+                moves.put(Formatter.moveToFen(move), n);
             }
             board.undoMove(move);
         }
         return count;
     }
 
-    static String displayMove(int move) {
-        String text = (String.valueOf((char)('a' + Move.from(move) % 8))
-                + String.valueOf((char)('1' + Move.from(move) / 8))
-                + String.valueOf((char)('a' + Move.to(move) % 8))
-                + String.valueOf((char)('1' + Move.to(move) / 8)));
-        if (Move.promotion(move) != 0)
-            text += String.valueOf((char)(SYMBOLS.charAt(Move.promotion(move))+32));
-        return text;
+    public static int[] generate(Board board) {
+        int sideToMove = board.sideToMove();
+        long check = attackingPieces(board.kingPosition(sideToMove), sideToMove, board);
+        long pin = pinnedPieces(board.kingPosition(sideToMove), sideToMove, board);
+        return generate(check, pin, sideToMove, 0, true, true, true, board);
     }
 
     public static int[] generate(long check, long pin, int sideToMove, int ply, boolean capture, boolean nonCapture, boolean allPromotions, Board board) {
@@ -379,7 +375,7 @@ public class MoveGenerator {
                 | bishopMove(position, pieces) & (board.get(BISHOP) | board.get(QUEEN)) & own;
     }
 
-    private static long pinnedPieces(int position, int sideToMove, Board board) {
+    public static long pinnedPieces(int position, int sideToMove, Board board) {
         long own = board.get(sideToMove);
         long enemy = board.get(OTHER(sideToMove));
         long pieces = own | enemy;
@@ -414,15 +410,15 @@ public class MoveGenerator {
         return pin;
     }
 
-    private static long rookMove(int position, long pieces) {
+    public static long rookMove(int position, long pieces) {
         return (RATT1(position, pieces) | RATT2(position, pieces));
     }
 
-    private static long bishopMove(int position, long pieces) {
+    public static long bishopMove(int position, long pieces) {
         return (BATT3(position, pieces) | BATT4(position, pieces));
     }
 
-    private static long queenMove(int position, long pieces) {
+    public static long queenMove(int position, long pieces) {
         return (RATT1(position, pieces) | RATT2(position, pieces) | BATT3(position, pieces) | BATT4(position, pieces));
     }
 }

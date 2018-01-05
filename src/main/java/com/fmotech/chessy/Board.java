@@ -263,19 +263,6 @@ public class Board {
         return kings[sideToMove];
     }
 
-    public void assertBoard() {
-        long piecesOr = bitBoards[WHITE] | bitBoards[BLACK];
-        long piecesXor = bitBoards[WHITE] ^ bitBoards[BLACK];
-        if (piecesOr != piecesXor) throw new IllegalStateException("Board missmatch");
-        long individualOr = 0, individualXor = 0;
-        for (int i = PAWN; i <= KING; i++) {
-            individualOr |= bitBoards[i];
-            individualXor ^= bitBoards[i];
-        }
-        if (individualOr != individualXor) throw new IllegalStateException("Individuals missmatch");
-        if (piecesOr != individualOr) throw new IllegalStateException("Global missmatch");
-    }
-
     public void print() {
         System.out.println(DebugUtils.debug(bitBoards));
     }

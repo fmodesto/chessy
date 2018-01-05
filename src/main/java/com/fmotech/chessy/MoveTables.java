@@ -12,6 +12,7 @@ import static com.fmotech.chessy.KoggeStone.S;
 import static com.fmotech.chessy.KoggeStone.SE;
 import static com.fmotech.chessy.KoggeStone.SW;
 import static com.fmotech.chessy.KoggeStone.W;
+import static com.fmotech.chessy.KoggeStone.shiftOne;
 import static com.fmotech.chessy.KoggeStone.slide;
 import static com.fmotech.chessy.Utils.BIT;
 import static java.util.stream.IntStream.range;
@@ -47,8 +48,8 @@ public class MoveTables {
 
     public static final long[] RAYS = initializeRays();
     public static final long[][] PAWN_ATTACK = new long[][] {
-            range(0, 64).mapToLong(i -> KoggeStone.pawnAttackWhite(BIT(i))).toArray(),
-            range(0, 64).mapToLong(i -> KoggeStone.pawnAttackBlack(BIT(i))).toArray() };
+            range(0, 64).mapToLong(Utils::BIT).map(b -> shiftOne(b, NW) | shiftOne(b, NE)).toArray(),
+            range(0, 64).mapToLong(Utils::BIT).map(b -> shiftOne(b, SW) | shiftOne(b, SE)).toArray() };
     public static final long[] KNIGHT = range(0, 64).mapToLong(i -> KoggeStone.knightMove(BIT(i))).toArray();
     public static final long[] KING = range(0, 64).mapToLong(i -> KoggeStone.kingMove(BIT(i))).toArray();
 

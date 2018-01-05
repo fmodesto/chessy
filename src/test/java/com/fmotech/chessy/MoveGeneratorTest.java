@@ -1,7 +1,7 @@
 package com.fmotech.chessy;
 
 import com.fmotech.chessy.oli.OliThink;
-import org.junit.BeforeClass;
+import com.fmotech.chessy.oli.OliUtils;
 import org.junit.Test;
 
 import java.time.LocalDateTime;
@@ -22,11 +22,6 @@ import static org.junit.Assert.assertEquals;
 public class MoveGeneratorTest {
 
     private static final int SKIP = 1;
-
-    @BeforeClass
-    public static void initialize() {
-        OliThink.initialize();
-    }
 
     @Test
     public void perftTests() {
@@ -85,20 +80,13 @@ public class MoveGeneratorTest {
 
     private void executeOli(String fen, long... counts) {
         System.out.println(fen);
-        OliThink._parse_fen(fen);
         for (int i = 1; i <= counts.length - SKIP; i++) {
             LocalDateTime start = now();
-            long count = OliThink.perft(OliThink.onmove, i, 0);
+            long count = OliUtils.perft(fen, i);
             System.out.printf("%d: %10d in %6d ms\n", i, count, MILLIS.between(start, now()));
             assertEquals(String.valueOf(counts[i-1] - count), counts[i-1], count);
         }
     }
-
-    private Map<String, Long> oli(String fen, int depth) {
-        OliThink._parse_fen(fen);
-        OliThink.perft(OliThink.onmove, depth, 1);
-        return OliThink.moves;
-}
 
     @Test
     public void debug2() {
@@ -109,7 +97,7 @@ public class MoveGeneratorTest {
         long l = MoveGenerator.countMoves(depth, Board.load(fen), true);
         System.out.println(l);
         Map<String, Long> chessy = MoveGenerator.moves;
-        Map<String, Long> oli = oli(fen, depth);
+        Map<String, Long> oli = OliUtils.divide(fen, depth);
 
         if (!chessy.keySet().equals(oli.keySet())) {
             Set<String> tmp = new HashSet<>(chessy.keySet());
@@ -146,5 +134,11 @@ public class MoveGeneratorTest {
                 }
             }
         }
+        String fen = "7K/8/6Q1/8/8/8/k7/q7 w - - 5 4";
+        String move = OliUtils.think(fen, 2);
+        System.out.println(move);
+
+        System.out.println(OliUtils.evaluate(fen));
+
     }
 }
