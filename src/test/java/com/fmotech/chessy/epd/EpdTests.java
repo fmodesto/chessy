@@ -2,7 +2,9 @@ package com.fmotech.chessy.epd;
 
 import com.fmotech.chessy.Board;
 import com.fmotech.chessy.Engine;
+import com.fmotech.chessy.oli.OliThink;
 import com.fmotech.chessy.oli.OliUtils;
+import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -10,15 +12,18 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.assertEquals;
+
 @RunWith(Parameterized.class)
 public class EpdTests {
 
-    public static final int TIME = 90;
-    public static final int EXECUTE = 10;
+    public static final int TIME = 5;
+    public static final int EXECUTE = -1;
     private final EpdReader.Epd epd;
 
     @Parameters
@@ -35,6 +40,12 @@ public class EpdTests {
 
     @Test
     public void execute() {
+        for (int i = 0; i < 20; i++) {
+            Arrays.fill(Engine.mem[i], 0);
+            Arrays.fill(OliThink.mem[i], 0);
+        }
+        Engine.hashes.clear();
+        OliThink.hashes.clear();
         System.out.println(epd.fen);
         String bm = EpdReader.getFen(epd, "bm");
         String am = EpdReader.getFen(epd, "am");
@@ -51,10 +62,21 @@ public class EpdTests {
     }
 
     private String think(String fen, int time) {
-        System.out.println("Oli: " + OliUtils.think(fen, time));
+        System.out.println("Oli: " + OliUtils.think(fen, time, 64));
         System.out.println("Mine: ");
         Engine engine = new Engine(Board.load(fen));
-        return engine.calc(time, 64);
+        String calc = engine.calc(time, 64);
+//        for (int i = 0; i < Math.min(OliThink.hashes.size(), Engine.hashes.size()); i++) {
+//            if (OliThink.hashes.get(i) != (long) Engine.hashes.get(i)) {
+//                System.err.println("FAILURE AT " + i);
+//                throw new AssertionError("FAILURE AT " + i);
+//            }
+//        }
+//        assertEquals(OliThink.hashes, Engine.hashes);
+        for (int i = 0; i < 20; i++) {
+            Assert.assertArrayEquals("Iter: " + i, Engine.mem[i], OliThink.mem[i]);
+        }
+        return calc;
     }
 
     private void ignoreFalse(String message, boolean condition) {

@@ -1,17 +1,28 @@
 /* OliThink5 Java(c) Oliver Brausch 04.Jan.2018, ob112@web.de, http://brausch.org */
 package com.fmotech.chessy.oli;
 
-import com.fmotech.chessy.DebugUtils;
+import com.fmotech.chessy.Board;
+import com.fmotech.chessy.Evaluation;
+import com.fmotech.chessy.IBoard;
+import com.fmotech.chessy.Move;
+import com.fmotech.chessy.MoveGenerator;
+import com.fmotech.chessy.See;
+import com.fmotech.chessy.Utils;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.security.AccessControlException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.StringTokenizer;
+
+import static com.fmotech.chessy.Board.ZOBRIST;
 
 public class OliThink {
 	final static String VER = "5.3.3 Java";
@@ -24,6 +35,9 @@ public class OliThink {
 	final static int BISHOP = 5;
 	final static int ROOK = 6;
 	final static int QUEEN = 7;
+
+	private static final int[] CONVERT = new int[]{0, ENP, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING };
+	private static final int[] REVERT = new int[]{0, Board.PAWN, Board.KNIGHT, Board.KING, Board.EN_PASSANT, Board.BISHOP, Board.ROOK, Board.QUEEN };
 
 	final static int CNODES = 0xFFFF;
 	final static int pval[] = {0, 100, 290, 0, 100, 310, 500, 950};
@@ -106,7 +120,8 @@ public class OliThink {
 	final static long[] hstack = new long[0x800];
 	final static long[] mstack = new long[0x800];
 
-	final static long[] hashxor = new long[4096];
+	final static long[] hashxor = copy(ZOBRIST);
+
 	final static long[] rays = new long[0x10000];
 	final static long[][] pmoves = new long[2][64];
 	final static long[][] pcaps = new long[2][192];
@@ -157,6 +172,80 @@ public class OliThink {
 			else if (pieceChar.charAt(i) == s-32) { c[0] = 1; return i; }
 		return 0;
 	}
+
+	public static class BoardAdapter implements IBoard {
+
+		@Override
+		public long get(int type) {
+			if (type < 2)
+				return colorb[type];
+			else
+				return pieceb[CONVERT[type]];
+		}
+
+		@Override
+		public int kingPosition(int sideToMove) {
+			return kingpos[sideToMove];
+		}
+
+		@Override
+		public int pieceType(long bit) {
+			if ((bit & pieceb[PAWN]) != 0) return Board.PAWN;
+			if ((bit & pieceb[KNIGHT]) != 0) return Board.KNIGHT;
+			if ((bit & pieceb[BISHOP]) != 0) return Board.BISHOP;
+			if ((bit & pieceb[ROOK]) != 0) return Board.ROOK;
+			if ((bit & pieceb[QUEEN]) != 0) return Board.QUEEN;
+			if ((bit & pieceb[KING]) != 0) return Board.KING;
+			return Board.EN_PASSANT;
+		}
+
+		@Override
+		public int castle() {
+			return CASTLE();
+		}
+
+		@Override
+		public int[] getMoveList(int ply) {
+			return movelist[ply];
+		}
+
+		@Override
+		public int enPassantPosition() {
+			return ENPASS();
+		}
+
+		@Override
+		public long enPassant(int sideToMove) {
+			return Utils.BIT(ENPASS()) & (sideToMove == 1 ? 0xFF0000L : 0xFF0000000000L);
+		}
+
+		@Override
+		public long enPassantPawn(int sideToMove) {
+			return sideToMove == 1 ? Utils.BIT(ENPASS()) << 8 : Utils.BIT(ENPASS()) >>> 8;
+		}
+	}
+
+	private static long[] copy(long[] zobrist) {
+		long[] hash = Arrays.copyOf(zobrist, zobrist.length);
+		for (int sq = 0; sq < 64; sq++) {
+			for (int p = 0; p < 8; p++) {
+				for (int c = 0; c < 2; c++) {
+					hash[sq | CONVERT[p] << 6 | (c) << 9] = zobrist[sq | (p) << 6 | (c) << 9];
+				}
+			}
+		}
+		return hash;
+	}
+
+	private static int ADAPT(int m) {
+		return Move.create(FROM(m), TO(m), REVERT[PIECE(m)], REVERT[CAP(m)], REVERT[PROM(m)], ONMV(m));
+	}
+
+	private static int REVERT(int m) {
+		return Move.create(FROM(m), TO(m), CONVERT[PIECE(m)], CONVERT[CAP(m)], CONVERT[PROM(m)], ONMV(m));
+	}
+
+	static BoardAdapter adapter = new BoardAdapter();
 
 	static boolean book;
 	static void _parse_fen(String fen) {
@@ -660,11 +749,13 @@ public class OliThink {
 	}
 
 	static void doMove(int m, int c) {
+//		System.out.println("Do   " + Formatter.moveToFen(m));
         mstack[COUNT()] = count | (flags << 17) | (((long)(mat + 0x4000)) << 27) | (((long)m) << 42);
         move(m, c);
 	}
 
 	static void undoMove(int m, int c) {
+//		System.out.println("Undo " + Formatter.moveToFen(m));
 	        long u = mstack[COUNT() - 1];
 	        move(m, c);
 	        count = (int)(u & 0x1FFFF);
@@ -957,19 +1048,25 @@ public class OliThink {
 	}
 
 	static int generate(long ch, int c, int ply, int cap, int noncap) {
-        int f = kingpos[c];
-        long pin = pinnedPieces(f, c^1);
-		int[] ml = movelist[ply];
-		int[] mn = new int[]{0};
-
-        if (ch != 0L) {
-        	int r = generateCheckEsc(ch, ~pin, c, f, ml, mn);
-    		movenum[ply] = mn[0];
-    		return r;
-        }
-        if (cap != 0) generateCaps(ch, c, f, pin, ml, mn);
-        if (noncap != 0) generateNonCaps(ch, c, f, pin, ml, mn);
-		movenum[ply] = mn[0];
+		long pin = MoveGenerator.pinnedPieces(kingpos[c], c, adapter);
+		MoveGenerator.generate(ch, pin, c, ply, cap != 0, noncap != 0, true, adapter);
+		movenum[ply] = movelist[ply][0] - 1;
+		for (int i = 0; i < movenum[ply]; i++) {
+			movelist[ply][i] = REVERT(movelist[ply][i+1]);
+		}
+//        int f = kingpos[c];
+//        long pin = pinnedPieces(f, c^1);
+//		int[] ml = movelist[ply];
+//		int[] mn = new int[]{0};
+//
+//        if (ch != 0L) {
+//        	int r = generateCheckEsc(ch, ~pin, c, f, ml, mn);
+//    		movenum[ply] = mn[0];
+//    		return r;
+//        }
+//        if (cap != 0) generateCaps(ch, c, f, pin, ml, mn);
+//        if (noncap != 0) generateNonCaps(ch, c, f, pin, ml, mn);
+//		movenum[ply] = mn[0];
         return 0;
 }
 
@@ -1185,25 +1282,31 @@ public class OliThink {
 	}
 
 	static int eval1 = 0;
+	static Evaluation evaluation = new Evaluation();
 	static int eval(int c) {
-		int sf0 = 0, sf1 = 0;
-		int[] sfp = new int[]{sf0};
-		int ev0 = evalc(0, sfp);
-		sf0 = sfp[0];
-		sfp[0] = sf1;
-		int ev1 = evalc(1, sfp);
-		sf1 = sfp[0];
-		eval1++;
-
-		if (sf1 < 6) ev0 += kmobil[kingpos[0]]*(6-sf1);
-		if (sf0 < 6) ev1 += kmobil[kingpos[1]]*(6-sf0);
-
-		return (c != 0 ? (ev1 - ev0) : (ev0 - ev1));
+		return evaluation.evaluate(adapter, c);
+//		int sf0 = 0, sf1 = 0;
+//		int[] sfp = new int[]{sf0};
+//		int ev0 = evalc(0, sfp);
+//		sf0 = sfp[0];
+//		sfp[0] = sf1;
+//		int ev1 = evalc(1, sfp);
+//		sf1 = sfp[0];
+//		eval1++;
+//
+//		if (sf1 < 6) ev0 += kmobil[kingpos[0]]*(6-sf1);
+//		if (sf0 < 6) ev1 += kmobil[kingpos[1]]*(6-sf0);
+//
+//		return (c != 0 ? (ev1 - ev0) : (ev0 - ev1));
 	}
 
 	static long nodes;
 	static long qnodes;
+
+	static See see = new See();
+	public static List<Long> hashes = new ArrayList<>();
 	static int quiesce(long ch, int c, int ply, int alpha, int beta) {
+//		check();
 		int i, w, best = -32000;
 		int cmat = c == 1 ? -mat: mat;
 		if (ply == 63) return eval(c) + cmat;
@@ -1223,7 +1326,7 @@ public class OliThink {
 
 		for (i = 0; i < movenum[ply]; i++) {
 			int m = qpick(movelist[ply], movenum[ply], i);
-			if (ch == 0 && PROM(m) == 0 && pval[PIECE(m)] > pval[CAP(m)] && swap(m) < 0) continue;
+			if (ch == 0 && PROM(m) == 0 && pval[PIECE(m)] > pval[CAP(m)] && /*swap(m)*/see.evaluate(adapter, ADAPT(m)) < 0) continue;
 
 			doMove(m, c);
 			qnodes++;
@@ -1277,9 +1380,10 @@ public class OliThink {
 	      return r;
 	}
 
-	static long HASHP(int c) { return (hashb ^ hashxor[flags | 1024 | (c << 11)]); }
+	static long HASHP(int c) { return (hashb ^ hashxor[flags | 0x400 | (c << 11)]); }
 	static long HASHB(int c, int d) { return ((hashb ^ hashxor[flags | 1024]) ^ hashxor[c | (d << 1) | 2048]); }
 	static int search(long ch, int c, int d, int ply, int alpha, int beta, int pvnode, int isnull) {
+//		check();
 		int i, j, n, w, asave, first, best;
 		int hmove;
 		long hb, hp, he;
@@ -1419,6 +1523,10 @@ public class OliThink {
 		return alpha;
 	}
 
+	private static boolean check() {
+		return hashes.add(hashb);
+	}
+
 	static int execMove(int m) {
 		int i, c;
 		doMove(m, onmove);
@@ -1523,6 +1631,8 @@ public class OliThink {
 	static int st = 0;
 	static boolean post = true;
 
+	public static long[][] mem = new long[20][HSIZEB];
+
 	static int calc(int sd, int tm) {
 			int i, j, t1 = 0, m2go = 32;
 			long ch = attacked(kingpos[onmove], onmove);
@@ -1552,9 +1662,10 @@ public class OliThink {
 				t1 = (int)(getTime() - starttime);
 				if (sabort && pvlength[0] == 0 && (iter--) != 0) break;
 				if (post && pvlength[0] > 0) {
-					System.out.printf("%2d %5d %6d %9d  ", iter, value[iter], t1/10, (int)(nodes + qnodes));
+					System.out.printf("%2d %5d %6d %9d  ", iter, value[iter], t1, (int)(nodes + qnodes));
 					displaypv(); printf("\n");
 				}
+				System.arraycopy(hashDB, 0, mem[iter], 0, hashDB.length);
 				if (!pondering && (iter >= 32000-value[iter] || sabort || t1 > searchtime/2)) break;
 			}
             pondering = false;
@@ -1729,7 +1840,7 @@ public class OliThink {
 	static void initialize() {
 		for (int i = 0; i < 0x10000; i++) LSB[i] = _slow_lsb(i);
 		for (int i = 0; i < 0x10000; i++) BITC[i] = _bitcnt(i);
-		for (int i = 0; i < 4096; i++) hashxor[i] = _rand_64();
+//		for (int i = 0; i < 4096; i++) hashxor[i] = _rand_64();
 		for (int i = 0; i < HSIZEB; i++) hashDB[i] = 0L;
 		for (int i = 0; i < HSIZEP; i++) hashDP[i] = 0L;
 		for (int i = 0; i < 64; i++) BIT[i] = 1L << i;

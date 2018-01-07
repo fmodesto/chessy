@@ -90,9 +90,9 @@ public class MoveGeneratorTest {
 
     @Test
     public void debug2() {
-        String fen = "7K/8/6Q1/8/8/8/k7/q7 w - - 5 4";
+        String fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 //        String fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K1R1 b Qkq - 1 1";
-        int depth = 2;
+        int depth = 3;
 
         long l = MoveGenerator.countMoves(depth, Board.load(fen), true);
         System.out.println(l);

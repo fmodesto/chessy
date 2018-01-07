@@ -52,7 +52,7 @@ public class Evaluation {
             range(0, 64).map(i -> asList(0, 0, 1, 8, 16, 32, 64, 128).get(RANK(i))).toArray(),
             range(0, 64).map(i -> asList(0, 0, 1, 8, 16, 32, 64, 128).get(7 - RANK(i))).toArray() };
 
-    public int evaluate(Board board, int sideToMove) {
+    public int evaluate(IBoard board, int sideToMove) {
         long dataWhite = evaluateSide(WHITE, BLACK, board);
         int pieceWhite = highInt(dataWhite);
         int evaluationWhite = lowInt(dataWhite);
@@ -67,7 +67,7 @@ public class Evaluation {
         return sideToMove != 0 ? evaluationBlack - evaluationWhite : evaluationWhite - evaluationBlack;
     }
 
-    static long evaluateSide(int side, int otherSide, Board board) {
+    static long evaluateSide(int side, int otherSide, IBoard board) {
         int pieceValue = 0;
         int mobility = 0;
         int kingAttack = 0;

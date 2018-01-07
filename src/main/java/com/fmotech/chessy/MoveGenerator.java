@@ -71,7 +71,7 @@ public class MoveGenerator {
         return generate(check, pin, sideToMove, 0, true, true, true, board);
     }
 
-    public static int[] generate(long check, long pin, int sideToMove, int ply, boolean active, boolean quiet, boolean allPromotions, Board board) {
+    public static int[] generate(long check, long pin, int sideToMove, int ply, boolean active, boolean quiet, boolean allPromotions, IBoard board) {
         int[] moves = board.getMoveList(ply);
         moves[0] = 1;
 
@@ -86,7 +86,7 @@ public class MoveGenerator {
         return moves;
     }
 
-    private static void generateCheckEscape(int[] moves, int sideToMove, long check, long pin, int flags, Board board) {
+    private static void generateCheckEscape(int[] moves, int sideToMove, long check, long pin, int flags, IBoard board) {
         long own = board.get(sideToMove);
         long enemy = board.get(OTHER(sideToMove));
         long pieces = own | enemy;
@@ -153,7 +153,7 @@ public class MoveGenerator {
         else return BATT4(from, pieces) & BATT4(to, pieces) & ~pieces;
     }
 
-    private static void generateKingMoves(int[] moves, int sideToMove, long mask, Board board) {
+    private static void generateKingMoves(int[] moves, int sideToMove, long mask, IBoard board) {
         long enemy = board.get(OTHER(sideToMove));
         int king = board.kingPosition(sideToMove);
 
@@ -167,7 +167,7 @@ public class MoveGenerator {
         }
     }
 
-    public static void generateQuietMoves(int[] moves, int sideToMove, long pin, Board board) {
+    public static void generateQuietMoves(int[] moves, int sideToMove, long pin, IBoard board) {
         long own = board.get(sideToMove);
         long enemy = board.get(OTHER(sideToMove));
         long pieces = own | enemy;
@@ -256,7 +256,7 @@ public class MoveGenerator {
         generateKingMoves(moves, sideToMove, ~pieces, board);
     }
 
-    public static void generateActiveMoves(int[] moves, int sideToMove, long pin, Board board) {
+    public static void generateActiveMoves(int[] moves, int sideToMove, long pin, IBoard board) {
         long own = board.get(sideToMove);
         long enemy = board.get(OTHER(sideToMove));
         long pieces = own | enemy;
@@ -348,7 +348,7 @@ public class MoveGenerator {
         }
     }
 
-    private static void registerAttackMoves(int[] moves, int sideToMove, int from, int piece, long target, int promotion, Board board) {
+    private static void registerAttackMoves(int[] moves, int sideToMove, int from, int piece, long target, int promotion, IBoard board) {
         while (target != 0) {
             int to = lowestBitPosition(target);
             long capture = BIT(to);
@@ -358,7 +358,7 @@ public class MoveGenerator {
     }
 
     @SuppressWarnings("RedundantIfStatement")
-    public static boolean positionAttacked(int position, int sideToMove, Board board) {
+    public static boolean positionAttacked(int position, int sideToMove, IBoard board) {
         long pieces = (board.get(WHITE) | board.get(BLACK)) ^ BIT(board.kingPosition(sideToMove));
         long enemy = board.get(OTHER(sideToMove));
         if ((MoveTables.PAWN_ATTACK[sideToMove][position] & enemy & board.get(PAWN)) != 0) return true;
@@ -371,7 +371,7 @@ public class MoveGenerator {
         return false;
     }
 
-    public static long attackingPieces(int position, int sideToMove, Board board) {
+    public static long attackingPieces(int position, int sideToMove, IBoard board) {
         long enemy = board.get(OTHER(sideToMove));
         long pieces = board.get(sideToMove) | enemy;
         return MoveTables.PAWN_ATTACK[sideToMove][position] & board.get(PAWN) & enemy
@@ -380,7 +380,7 @@ public class MoveGenerator {
                 | bishopMove(position, pieces) & (board.get(BISHOP) | board.get(QUEEN)) & enemy;
     }
 
-    private static long reach(int position, int sideToMove, Board board) {
+    private static long reach(int position, int sideToMove, IBoard board) {
         long own = board.get(sideToMove);
         long pieces = board.get(OTHER(sideToMove)) | own;
         return MoveTables.KNIGHT[position] & board.get(KNIGHT) & own
@@ -388,7 +388,7 @@ public class MoveGenerator {
                 | bishopMove(position, pieces) & (board.get(BISHOP) | board.get(QUEEN)) & own;
     }
 
-    public static long pinnedPieces(int position, int sideToMove, Board board) {
+    public static long pinnedPieces(int position, int sideToMove, IBoard board) {
         long own = board.get(sideToMove);
         long enemy = board.get(OTHER(sideToMove));
         long pieces = own | enemy;

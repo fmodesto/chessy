@@ -1,5 +1,8 @@
 package com.fmotech.chessy;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static com.fmotech.chessy.BitOperations.bitCount;
 import static com.fmotech.chessy.BitOperations.sparseBitCount;
 import static com.fmotech.chessy.Board.BLACK;
@@ -9,9 +12,7 @@ import static com.fmotech.chessy.Board.ROOK;
 import static com.fmotech.chessy.Board.WHITE;
 import static com.fmotech.chessy.Evaluation.PAWN_FREE;
 import static com.fmotech.chessy.MoveGenerator.attackingPieces;
-import static com.fmotech.chessy.MoveGenerator.generate;
 import static com.fmotech.chessy.MoveGenerator.pinnedPieces;
-import static com.fmotech.chessy.MoveGenerator.positionAttacked;
 import static com.fmotech.chessy.Utils.OTHER;
 
 public class Engine {
@@ -57,6 +58,8 @@ public class Engine {
         this.board = board;
     }
 
+    public static long[][] mem = new long[20][HSIZEB];
+
     public String calc(int time, int depth) {
         long ch = attackingPieces(board.kingPosition(board.sideToMove()), board.sideToMove(), board);;
         int t1 = 0;
@@ -78,8 +81,9 @@ public class Engine {
             t1 = (int)(System.currentTimeMillis() - starttime);
             if (sabort && pvlength[0] == 0 && (iter--) != 0) break;
             if (pvlength[0] > 0) {
-                System.out.printf("%2d %5d %6d %9d  %s\n", iter, value[iter], t1/10, (int)(nodes + qnodes), displaypv());
+                System.out.printf("%2d %5d %6d %9d  %s\n", iter, value[iter], t1, (int)(nodes + qnodes), displaypv());
             }
+            System.arraycopy(hashDB, 0, mem[iter], 0, hashDB.length);
             if ((iter >= 32000-value[iter] || sabort || t1 > searchtime/2)) break;
         }
         System.out.printf("move %s\n", Formatter.moveToFen(pv[0][0]));
@@ -97,7 +101,10 @@ public class Engine {
         return sb.toString();
     }
 
+    public static List<Long> hashes = new ArrayList<>();
+
     private int quiesce(long ch, int c, int ply, int alpha, int beta) {
+//        check();
         int i, w, best = -32000;
         int oc = OTHER(c);
         int cmat = board.material(c) - board.material(oc);
@@ -114,7 +121,7 @@ public class Engine {
         } while(false);
 
         long pin = pinnedPieces(board.kingPosition(c), c, board);
-        int[] moveList = MoveGenerator.generate(ch, pin, c, ply, true, false, false, board);
+        int[] moveList = MoveGenerator.generate(ch, pin, c, ply, true, false, true, board);
         if (ch != 0 && moveList[0] == 1) return -32000 + ply;
 
         for (i = 1; i < moveList[0]; i++) {
@@ -140,7 +147,12 @@ public class Engine {
         return best > -32000 ? best : evaluation.evaluate(board, c) + cmat;
     }
 
+    private boolean check() {
+        return hashes.add(board.hash());
+    }
+
     private int search(long ch, int c, int d, int ply, int alpha, int beta, int pvnode, int isnull) {
+//        check();
         int oc = OTHER(c);
         int w = board.material(c) - board.material(oc);
 
@@ -168,11 +180,10 @@ public class Engine {
             } else {
                 if (w >= beta) return beta;
             }
-        } else {
-            w = board.material(c) - board.material(oc);
         }
 
-        if (pvnode == 0 && ch == 0 && isnull != 0 && d > 1 && bitCount(board.get(c) & ~board.get(PAWN) & ~pinnedPieces(board.kingPosition(c), c, board)) > 2) {
+        long pin = pinnedPieces(board.kingPosition(c), c, board);
+        if (pvnode == 0 && ch == 0 && isnull != 0 && d > 1 && bitCount(board.get(c) & ~board.get(PAWN) & ~pin) > 2) {
             int R = (10 + d + nullVariance(w - beta)) / 4;
             if (R > d) R = d;
             board.doNullMove();
@@ -183,8 +194,6 @@ public class Engine {
                 return beta;
             }
         }
-
-        long pin = pinnedPieces(board.kingPosition(c), c, board);
 
         int hmove = 0;
         if (ply > 0) {
@@ -230,8 +239,7 @@ public class Engine {
                 if (nch != 0) ext++; // Check Extension
                 else if (d >= 3 && n == 3 && pvnode == 0) { //LMR
                     if (m == killer[ply]) ; //Don't reduce killers
-                    else if (Move.piece(m) == PAWN && (PAWN_FREE[c][Move.to(m)] & board.get(PAWN) & board.get(oc)) == 0)
-                        ; //Don't reduce free pawns
+                    else if (Move.piece(m) == PAWN && (PAWN_FREE[c][Move.to(m)] & board.get(PAWN) & board.get(oc)) == 0); //Don't reduce free pawns
                     else ext--;
                 }
 
@@ -262,7 +270,7 @@ public class Engine {
                     }
                     if (pvnode != 0 && w >= alpha) {
                         pv[ply][ply] = m;
-                        for (int j = ply + 1; j < pvlength[ply + 1]; j++) pv[ply][j] = pv[ply + 1][j];
+                        System.arraycopy(pv[ply + 1], ply + 1, pv[ply], ply + 1, pvlength[ply + 1] - (ply + 1));
                         pvlength[ply] = pvlength[ply + 1];
                         if (ply == 0 && iter > 1 && w > value[iter - 1] - 20) noabort = false;
                         if (w == 31999 - ply) return w;
@@ -291,9 +299,8 @@ public class Engine {
     }
 
     private int retPVMove(int c, int ply, long ch, long pin) {
-        int i;
-        int[] movelist = MoveGenerator.generate(ch, pin, c, ply, false, true, false, board);
-        for (i = 1; i < movelist[0]; i++) {
+        int[] movelist = MoveGenerator.generate(ch, pin, c, ply, true, true, true, board);
+        for (int i = 1; i < movelist[0]; i++) {
             int m = movelist[i];
             if (m == pv[0][ply]) return m;
         }

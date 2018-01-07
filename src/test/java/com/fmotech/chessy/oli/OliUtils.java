@@ -1,9 +1,7 @@
 package com.fmotech.chessy.oli;
 
+import java.util.Arrays;
 import java.util.Map;
-
-import static com.fmotech.chessy.oli.OliThink.FROM;
-import static com.fmotech.chessy.oli.OliThink.TO;
 
 public class OliUtils {
 
@@ -22,10 +20,20 @@ public class OliUtils {
         return OliThink.moves;
     }
 
-    public static String think(String fen, int seconds) {
+    public static String think(String fen, int seconds, int depth) {
+        Arrays.fill(OliThink.hashDB, 0);
+        Arrays.fill(OliThink.hashDP, 0);
+        Arrays.fill(OliThink.history, 0);
+        Arrays.fill(OliThink.killer, 0);
+        Arrays.fill(OliThink.hstack, 0);
+        Arrays.fill(OliThink.mstack, 0);
+        for (int i = 0; i < 64; i++) {
+            Arrays.fill(OliThink.pv[i], 0);
+        }
+
         OliThink._parse_fen(fen);
         OliThink.st = seconds;
-        OliThink.calc(64, 0);
+        OliThink.calc(depth, 0);
         return OliThink.strmove(OliThink.pv[0][0]);
     }
 
@@ -38,5 +46,9 @@ public class OliUtils {
         OliThink._parse_fen(fen);
         int m = OliThink.parseMove(move, OliThink.onmove, 0);
         return OliThink.swap(m);
+    }
+
+    public static void load(String fen) {
+        OliThink._parse_fen(fen);
     }
 }

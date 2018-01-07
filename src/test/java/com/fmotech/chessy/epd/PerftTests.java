@@ -44,6 +44,7 @@ public class PerftTests {
     }
 
     private void execute(long expected, Board board, int level) {
+        long hash = board.hash();
         int m0 = board.material(0);
         int m1 = board.material(1);
         int fifty = board.fifty();
@@ -52,6 +53,7 @@ public class PerftTests {
         long count = MoveGenerator.countMoves(level, board, false);
         System.out.printf("%d: %10d in %6d ms\n", level, count, MILLIS.between(start, now()));
         assertEquals(expected, count);
+        assertEquals("hash", hash, board.hash());
         assertEquals("white", m0, board.material(0));
         assertEquals("black", m1, board.material(1));
         assertEquals("fifty", fifty, board.fifty());

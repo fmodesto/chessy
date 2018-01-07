@@ -21,7 +21,7 @@ public class See {
 
     private int[] gain = new int[32];
 
-    public int evaluate(Board board, int move) {
+    public int evaluate(IBoard board, int move) {
         int from = Move.from(move);
         int to = Move.to(move);
         int side = Move.sideToMove(move);
@@ -30,7 +30,7 @@ public class See {
         int piece = Move.piece(move);
 
         long pieces = (board.get(WHITE) | board.get(Board.BLACK)) ^ BIT(from);
-        if (Move.capture(move) == EN_PASSANT) pieces ^= board.enPassantPawn(side);
+//        if (Move.capture(move) == EN_PASSANT) pieces ^= board.enPassantPawn(side);
 
         gain[0] = pieceValue;
         pieceValue = MATERIAL[piece];
