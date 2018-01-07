@@ -14,18 +14,6 @@ public class BitOperations {
         return n ^ Long.lowestOneBit(n);
     }
 
-    public static int highestBitPosition(long n) {
-        return 63 - Long.numberOfLeadingZeros(n);
-    }
-
-    public static long highestBit(long n) {
-        return Long.highestOneBit(n);
-    }
-
-    public static long nextHighestBit(long n) {
-        return n ^ Long.highestOneBit(n);
-    }
-
     public static int bitCount(long n) {
         return Long.bitCount(n);
     }
@@ -45,10 +33,6 @@ public class BitOperations {
 
     public static long rotateLeft(long i, int distance) {
         return Long.rotateLeft(i, distance);
-    }
-
-    public static long rotateRight(long i, int distance) {
-        return Long.rotateRight(i, distance);
     }
 
     public static long joinInts(int high, int low) {

@@ -134,11 +134,5 @@ public class MoveGeneratorTest {
                 }
             }
         }
-        String fen = "7K/8/6Q1/8/8/8/k7/q7 w - - 5 4";
-        String move = OliUtils.think(fen, 2);
-        System.out.println(move);
-
-        System.out.println(OliUtils.evaluate(fen));
-
     }
 }

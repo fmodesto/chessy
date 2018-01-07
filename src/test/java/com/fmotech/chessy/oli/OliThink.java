@@ -1,6 +1,8 @@
 /* OliThink5 Java(c) Oliver Brausch 04.Jan.2018, ob112@web.de, http://brausch.org */
 package com.fmotech.chessy.oli;
 
+import com.fmotech.chessy.DebugUtils;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -114,7 +116,7 @@ public class OliThink {
 	final static int[] _king = {-9,-1,7,8,9,1,-7,-8};
 	final static long[] BIT = new long[64];
 	final static byte[] LSB = new byte[0x10000];
-	final static byte[] BITC = new byte[0x10000] ;      
+	final static byte[] BITC = new byte[0x10000] ;
 	final static int[] crevoke = new int[64];
 	final static int[] nmobil = new int[64];
 	final static int[] kmobil = new int[64];
@@ -150,8 +152,8 @@ public class OliThink {
 
 	static int _getpiece(char s, int[] c) {
 		int i;
-		for (i = 1; i < 8; i++) 
-			if (pieceChar.charAt(i) == s) { c[0] = 0; return i; } 
+		for (i = 1; i < 8; i++)
+			if (pieceChar.charAt(i) == s) { c[0] = 0; return i; }
 			else if (pieceChar.charAt(i) == s-32) { c[0] = 1; return i; }
 		return 0;
 	}
@@ -188,7 +190,7 @@ public class OliThink {
 				c = cp[0];
 				if (p == KING) kingpos[c] = row*8 + col;
 				else mat += c == 1 ? -pval[p] : pval[p];
-				hashb ^= hashxor[col | row << 3 | i << 6 | (c == 1 ? 512 : 0)];
+				hashb ^= hashxor[col | row << 3 | p << 6 | (c == 1 ? 512 : 0)];
 				pieceb[p] |= BIT[row*8 + col];
 				colorb[c] |= BIT[row*8 + (col++)];
 			}
@@ -202,7 +204,7 @@ public class OliThink {
 			if (s == 'Q') flags |= BIT[8];
 			if (s == 'q') flags |= BIT[9];
 		}
-		if (enps.charAt(0) >= 'a' && enps.charAt(0) <= 'h' && enps.charAt(1) >= '1' && enps.charAt(1) <= '8') flags |= 8*(enps.charAt(1) - '1') + enps.charAt(0) - 'a'; 
+		if (enps.charAt(0) >= 'a' && enps.charAt(0) <= 'h' && enps.charAt(1) >= '1' && enps.charAt(1) <= '8') flags |= 8*(enps.charAt(1) - '1') + enps.charAt(0) - 'a';
 		count = (fullm - 1)*2 + onmove + (halfm << 10);
 		for (i = 0; i < COUNT(); i++) hstack[i] = 0L;
 	}
@@ -254,7 +256,7 @@ public class OliThink {
 					bkmove[n*32 + j] = 0;
 					if (j != 0) bkcount[bkflag[n]]++;
 					if (++n == BKSIZE) break;
-				} 				
+				}
 			}
 			bf.close();
 			fr.close();
@@ -316,7 +318,7 @@ public class OliThink {
 		return c;
 	}
 
-	static byte bitcnt (long n) {    
+	static byte bitcnt (long n) {
 	     return (byte)(BITC[LOW16(n)]
 	         +  BITC[LOW16(n >> 16)]
 	         +  BITC[LOW16(n >> 32)]
@@ -363,8 +365,8 @@ public class OliThink {
 		if ((PCAP(f, c) & pieceb[PAWN]) != 0) return true;
 		if ((NCAP(f, c) & pieceb[KNIGHT]) != 0) return true;
 		if ((KCAP(f, c) & pieceb[KING]) != 0) return true;
-		if ((RCAP1(f, c) & RQU()) != 0) return true; 
-		if ((RCAP2(f, c) & RQU()) != 0) return true; 
+		if ((RCAP1(f, c) & RQU()) != 0) return true;
+		if ((RCAP2(f, c) & RQU()) != 0) return true;
 		if ((BCAP3(f, c) & BQU()) != 0) return true;
 		if ((BCAP4(f, c) & BQU()) != 0) return true;
 		return false;
@@ -440,9 +442,9 @@ public class OliThink {
 		}
 		return perm;
 	}
-	
+
 	static void _init_rays(int off, Class<?> c, String srayf, String skey)  throws Exception {
-		int i, f, iperm, bc, index; 
+		int i, f, iperm, bc, index;
 		long board, mmask, occ, move, xray;
 		Method rayFunc = c.getDeclaredMethod(srayf, int.class, long.class, int.class);
 		Method key = c.getDeclaredMethod(skey, long.class, int.class);
@@ -460,16 +462,16 @@ public class OliThink {
 			}
 		}
 	}
-	
+
 	static long _rook0(int f, long board, int t) {
 		long free = 0L, occ = 0L, xray = 0L;
 		int i, b;
 		for (b = 0, i = f+1; i < 64 && i%8 != 0; i++) {
-			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }} 
+			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }}
 			if (b == 0) free |= BIT[i];
 		}
 		for (b = 0, i = f-1; i >= 0 && i%8 != 7; i--) {
-			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }} 
+			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }}
 			if (b == 0) free |= BIT[i];
 		}
 		return (t < 2) ? free : (t == 2 ? occ : xray);
@@ -479,11 +481,11 @@ public class OliThink {
 		long free = 0L, occ = 0L, xray = 0L;
 		int i, b;
 		for (b = 0, i = f-8; i >= 0; i-=8) {
-			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }} 
+			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }}
 			if (b == 0) free |= BIT[i];
 		}
 		for (b = 0, i = f+8; i < 64; i+=8) {
-			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }} 
+			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }}
 			if (b == 0) free |= BIT[i];
 		}
 		return (t < 2) ? free : (t == 2 ? occ : xray);
@@ -493,11 +495,11 @@ public class OliThink {
 		long free = 0L, occ = 0L, xray = 0L;
 		int i, b;
 		for (b = 0, i = f+9; i < 64 && (i%8 != 0); i+=9) {
-			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }} 
+			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }}
 			if (b == 0) free |= BIT[i];
 		}
 		for (b = 0, i = f-9; i >= 0 && (i%8 != 7); i-=9) {
-			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }} 
+			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }}
 			if (b == 0) free |= BIT[i];
 		}
 		return (t < 2) ? free : (t == 2 ? occ : xray);
@@ -507,16 +509,16 @@ public class OliThink {
 		long free = 0L, occ = 0L, xray = 0L;
 		int i, b;
 		for (b = 0, i = f-7; i >= 0 && (i%8 != 0); i-=7) {
-			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }} 
+			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }}
 			if (b == 0) free |= BIT[i];
 		}
 		for (b = 0, i = f+7; i < 64 && (i%8 != 7); i+=7) {
-			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }} 
+			if (TEST(i, board)) { if (b != 0) { xray |= BIT[i]; break; } else { occ |= BIT[i]; b = 1; }}
 			if (b == 0) free |= BIT[i];
 		}
 		return (t < 2) ? free : (t == 2 ? occ : xray);
 	}
-	
+
 	static void displaym(int m) {
 		printf(strmove(m));
 	}
@@ -545,7 +547,7 @@ public class OliThink {
 			}
 		}
 	}
-	
+
 	static void printf(String s) {
 		System.out.print(s);
 	}
@@ -566,8 +568,8 @@ public class OliThink {
 		if (count > 0xFFF) { //fifty > 3
 			int i, c = 0, n = COUNT() - (count >> 10);
 			if (count >= 0x400*100) return 2; //100 plies
-			for (i = COUNT() - 2; i >= n; i--) 
-				if (hstack[i] == hp && ++c == nrep) return 1; 
+			for (i = COUNT() - 2; i >= n; i--)
+				if (hstack[i] == hp && ++c == nrep) return 1;
 		} else if ((pieceb[PAWN] | RQU()) == 0) { //Check for mating material
 			if (_bitcnt(colorb[0]) <= 2 && _bitcnt(colorb[1]) <= 2) return 3;
 		}
@@ -677,7 +679,7 @@ public class OliThink {
 			mlist[mn[0]++] = m | _TO(t) | (cap != 0 ? _CAP(identPiece(t)) : 0);
 		}
 	}
-	
+
 	static void regMovesCaps(int m, long bc, long bm, int[]  mlist, int[] mn) {
         regMoves(m, bc, mlist, mn, 1);
         regMoves(m, bm, mlist, mn, 0);
@@ -786,7 +788,7 @@ public class OliThink {
 			}
 		}
 
-		b = pin & pieceb[PAWN]; 
+		b = pin & pieceb[PAWN];
 		while (b != 0) {
 			f = getLsb(b);
 			b ^= BIT[f];
@@ -794,9 +796,9 @@ public class OliThink {
 			if ((t & 8) != 0) continue;
 			m = 0L;
 			if ((t & 16) != 0) {
-				m = PMOVE(f, c);         
+				m = PMOVE(f, c);
 				if (m != 0 && RANK(f, c != 0 ? 0x30 : 0x08)) m |= PMOVE(c != 0 ? f-8 : f+8, c);
-			} 
+			}
 			if (RANK(f, c != 0 ? 0x08 : 0x30)) {
 				long a = (t & 32) != 0 ? PCA3(f, c) : ((t & 64) != 0 ? PCA4(f, c) : 0L);
 				regPromotions(f, c, m, ml, mn, 0, 0);
@@ -847,7 +849,7 @@ public class OliThink {
 			regMoves(PREMOVE(f, QUEEN, c), RMOVE(f) | BMOVE(f), ml, mn, 0);
 		}
 
-		b = pin & (pieceb[ROOK] | pieceb[BISHOP] | pieceb[QUEEN]); 
+		b = pin & (pieceb[ROOK] | pieceb[BISHOP] | pieceb[QUEEN]);
 		while (b != 0) {
 			int p;
 			f = getLsb(b);
@@ -890,7 +892,7 @@ public class OliThink {
 			}
 		}
 
-		b = pin & pieceb[PAWN]; 
+		b = pin & pieceb[PAWN];
 		while (b != 0) {
 			f = getLsb(b);
 			b ^= BIT[f];
@@ -898,7 +900,7 @@ public class OliThink {
 			if ((t & 8) != 0) continue;
 			m = a = 0L;
 			if ((t & 16) != 0) {
-				m = PMOVE(f, c);         
+				m = PMOVE(f, c);
 			} else if ((t & 32) != 0) {
 				a = PCA3(f, c);
 			} else {
@@ -939,7 +941,7 @@ public class OliThink {
 			regMoves(PREMOVE(f, QUEEN, c), RCAP(f, c) | BCAP(f,c), ml, mn, 1);
 		}
 
-		b = pin & (pieceb[ROOK] | pieceb[BISHOP] | pieceb[QUEEN]); 
+		b = pin & (pieceb[ROOK] | pieceb[BISHOP] | pieceb[QUEEN]);
 		while (b != 0) {
 			int p;
 			f = getLsb(b);
@@ -953,7 +955,7 @@ public class OliThink {
 		}
 		return 0;
 	}
-	
+
 	static int generate(long ch, int c, int ply, int cap, int noncap) {
         int f = kingpos[c];
         long pin = pinnedPieces(f, c^1);
@@ -998,7 +1000,7 @@ public class OliThink {
 	      else if ((temp = pieceb[QUEEN] & colorb[c] & attacks) != 0) piece = QUEEN;
 	      else if ((temp = pieceb[KING] & colorb[c] & attacks) != 0) piece = KING;
 	      else break;
-	 
+
 		temp &= -(long)temp;
 		colorb[c] ^= temp;
 		if ((piece & 4) != 0 || piece == 1) {
@@ -1149,17 +1151,17 @@ public class OliThink {
 		}
 
 		colorb[c] ^= pieceb[ROOK] & cb; // Back
-		b = pin & (pieceb[ROOK] | pieceb[BISHOP] | pieceb[QUEEN]); 
+		b = pin & (pieceb[ROOK] | pieceb[BISHOP] | pieceb[QUEEN]);
 		while (b != 0) {
 			f = getLsb(b);
 			b ^= BIT[f];
 			int p = identPiece(f);
 			if (p == BISHOP) {
-				sf[0] += 1; 
+				sf[0] += 1;
 				a = BATT3(f) | BATT4(f);
 				if ((a & kn) != 0) katt += _bitcnt(a & kn) << 4;
 			} else if (p == ROOK) {
-				sf[0] += 2; 
+				sf[0] += 2;
 				a = RATT1(f) | RATT2(f);
 				if ((a & kn) != 0) katt += _bitcnt(a & kn) << 4;
 			} else {
@@ -1205,7 +1207,7 @@ public class OliThink {
 		int i, w, best = -32000;
 		int cmat = c == 1 ? -mat: mat;
 		if (ply == 63) return eval(c) + cmat;
-		
+
 		if (ch == 0) do {
 			if (cmat - 200 >= beta) return beta;
 			if (cmat + 200 <= alpha) break;
@@ -1253,7 +1255,7 @@ public class OliThink {
 
 	static boolean inputSearch() {
         int ex;
-        if (!pondering) return true;       
+        if (!pondering) return true;
 		irbuf.append(inString.get(inStart));
 		inString.remove(inStart++);
 
@@ -1267,7 +1269,7 @@ public class OliThink {
         pon = 0;
         return false;
 	}
-	
+
 	final static int nullvar[] = new int[] {13, 43, 149, 519, 1809, 6311, 22027};
 	static int nullvariance(int delta) {
 	      int r = 0;
@@ -1281,13 +1283,13 @@ public class OliThink {
 		int i, j, n, w, asave, first, best;
 		int hmove;
 		long hb, hp, he;
-		
+
 		pvlength[ply] = ply;
 		if (ply == 63) return eval(c) + (c != 0 ? -mat: mat);
 		if ((++nodes & CNODES) == 0) {
 			long consumed = getTime() - starttime;
             if (!pondering && (consumed > maxtime || (consumed > searchtime && !noabort))) sabort = true;
-            if (bioskey()) sabort = inputSearch();
+//            if (bioskey()) sabort = inputSearch();
 		}
 		if (sabort) return 0;
 
@@ -1297,7 +1299,7 @@ public class OliThink {
 		if (d == 0) return quiesce(ch, c, ply, alpha, beta);
 		hstack[COUNT()] = hp;
 
-		hb = HASHB(c, d);		
+		hb = HASHB(c, d);
 		he = hashDB[(int)(hb & HMASKB)];
 		if (((he^hb) & HINVB) == 0) {
 			w = (int)LOW16(he) - 32768;
@@ -1330,7 +1332,7 @@ public class OliThink {
 		if (ply > 0) {
 			he = hashDP[(int)(hp & HMASKP)];
 			if (((he^hp) & HINVP) == 0) hmove = (int)(he & HMASKP);
-	
+
 			if (d >= 4 && hmove == 0) { // Simple version of Internal Iterative Deepening
 				w = search(ch, c, d-3, ply, alpha, beta, pvnode, 0);
 				he = hashDP[(int)(hp & HMASKP)];
@@ -1393,7 +1395,7 @@ public class OliThink {
 						killer[ply] = m;
 						history[m & 0xFFF]++;
 					}
-					hashDB[(int)(hb & HMASKB)] = (hb & HINVB) | (w + 32768); 
+					hashDB[(int)(hb & HMASKB)] = (hb & HINVB) | (w + 32768);
 					return beta;
 				}
 				if (pvnode != 0 && w >= alpha) {
@@ -1420,7 +1422,7 @@ public class OliThink {
 	static int execMove(int m) {
 		int i, c;
 		doMove(m, onmove);
-		onmove ^= 1; 
+		onmove ^= 1;
 		c = onmove;
 		if (book) for (i = 0; i < BKSIZE; i++) {
 			if (bkflag[i] < 2 && (bkmove[i*32 + COUNT() - 1] != m || bkmove[i*32 + COUNT()] == 0)) {
@@ -1459,7 +1461,7 @@ public class OliThink {
         if (prom != 0&& PROM(m) != prom) return false;
         return true;
 	}
-	
+
 	static int parseMove(String s, int c, int p) {
 		int i, to, from = -1, piece = PAWN, prom = 0;
 	    char h = 0, c1, c2;
@@ -1482,7 +1484,7 @@ public class OliThink {
 			else if (s.charAt(sp) == '+');
 			else { // Algebraic Notation
 				from = c1 - 'a' + 8*(c2 - '1');
-				c1 = s.charAt(sp++); 
+				c1 = s.charAt(sp++);
 				c2 = s.charAt(sp++);
 				if (!ISFILE(c1) || !ISRANK(c2)) return -1;
 				if (s.length() > sp) prom = _getpiece(s.charAt(sp), ip);
@@ -1551,7 +1553,7 @@ public class OliThink {
 				if (sabort && pvlength[0] == 0 && (iter--) != 0) break;
 				if (post && pvlength[0] > 0) {
 					System.out.printf("%2d %5d %6d %9d  ", iter, value[iter], t1/10, (int)(nodes + qnodes));
-					displaypv(); printf("\n"); 
+					displaypv(); printf("\n");
 				}
 				if (!pondering && (iter >= 32000-value[iter] || sabort || t1 > searchtime/2)) break;
 			}
@@ -1563,12 +1565,12 @@ public class OliThink {
             }
 			printf("move "); displaym(pv[0][0]); printf("\n");
 
-			if (post) printf("\nkibitz W: " + value[iter > sd ? sd : iter] 
-					+ " Nodes: " + nodes 
-					+ " QNodes: " + qnodes 
+			if (post) printf("\nkibitz W: " + value[iter > sd ? sd : iter]
+					+ " Nodes: " + nodes
+					+ " QNodes: " + qnodes
 					+ " Evals: " + eval1
 					+ " cs: " + t1/10
-					+ " knps: "+ (nodes+qnodes)/(t1+1) + "\n"); 
+					+ " knps: "+ (nodes+qnodes)/(t1+1) + "\n");
 			return execMove(pv[0][0]);
 	}
 
@@ -1606,10 +1608,10 @@ public class OliThink {
         }
         return cnt;
 	}
-	
+
 	static int protV2(String buf) {
 		if (buf.startsWith("protover")) printf("feature setboard=1 myname=\"OliThink " + VER + "\" colors=0 analyze=0 done=1\n");
-		else if (buf.startsWith("xboard")); 
+		else if (buf.startsWith("xboard"));
 		else if (buf.startsWith("quit")) return -2;
 		else if (buf.startsWith("new")) return -3;
 		else if (buf.startsWith("remove")) return -4;
@@ -1645,13 +1647,13 @@ public class OliThink {
         else return -1;
         return 0;
 }
-	
+
 	static StringBuffer sbuf = new StringBuffer();
 	static HashMap<Integer, String> inString = new HashMap<Integer, String>();
 	static int inStart = 0;
 	static int inCounter = 0;
 
-	static void readln() 
+	static void readln()
 	{
 			char c = 0;
 			while (c != '\n') {
@@ -1666,10 +1668,10 @@ public class OliThink {
 			inString.put(inCounter++, sbuf.toString());
 			sbuf.setLength(0);
 	}
-	
+
 	static int input(int c) {
 			int[] m = new int[1];
-		
+
 			String buf;
 			if (irbuf.length() > 0) {
 				buf = irbuf.toString();
@@ -1679,7 +1681,7 @@ public class OliThink {
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-	
+
 				buf = inString.get(inStart);
 				inString.remove(inStart++);
 			}
@@ -1694,12 +1696,12 @@ public class OliThink {
 	 */
 	public static void main(String[] args) {
 		int i, ex = -1;
-		
+
 		ReadThread read = new ReadThread();
 		read.start();
 
 		initialize();
-		
+
 		if (args.length > 0 && "-sd".equals(args[0])) {
 			time = 99999999;
 			if (args.length > 1) {

@@ -1,7 +1,9 @@
 package com.fmotech.chessy;
 
 import static com.fmotech.chessy.Board.BLACK;
+import static com.fmotech.chessy.Board.EN_PASSANT;
 import static com.fmotech.chessy.Board.PAWN;
+import static com.fmotech.chessy.Board.WHITE;
 import static com.fmotech.chessy.MoveTables.RATT1;
 import static com.fmotech.chessy.MoveTables.RATT2;
 import static com.fmotech.chessy.Utils.BIT;
@@ -36,6 +38,17 @@ public class Formatter {
             if (TEST(Move.from(moves[i]), target)) return moves[i];
         }
         throw new IllegalStateException("Move not found: " + move);
+    }
+
+    public static int moveFromFen(Board board, String move) {
+        int promotion = move.length() == 5 ? SYMBOLS.indexOf(move.charAt(4)) : 0;
+        int from = (move.charAt(0) - 'a') + 8 * (move.charAt(1) - '1');
+        int to = (move.charAt(2) - 'a') + 8 * (move.charAt(3) - '1');
+        int piece = board.pieceType(BIT(from));
+        int capture = board.pieceType(BIT(to));
+        int side = TEST(from, board.get(WHITE)) ? WHITE : BLACK;
+        capture = capture == EN_PASSANT ? board.enPassant(side) == BIT(to) && piece == PAWN ? EN_PASSANT : 0 : capture;
+        return Move.create(from, to, piece, capture, promotion, side);
     }
 
     public static String moveToFen(int move) {

@@ -11,7 +11,7 @@ import static java.lang.Character.isSpaceChar;
 import static java.lang.Character.toUpperCase;
 
 public class Board {
-    private static final int CASTLE_MASK = 0xffffffc0;
+    private static final int CASTLE_MASK = 0x3c0;
     private static final int EN_PASSANT_MASK = 0x0000003f;
     private static final int INCREMENT_FIFTY_PLY = 0x401;
     private static final int FIFTY_MASK = 0x3ff;
@@ -28,8 +28,8 @@ public class Board {
 
     public static final int EN_PASSANT = 1;
 
-    private static final int[] MATERIAL = { 0, 0, 100, 290, 310, 500, 950, 0 };
-    public static final int[] CASTLE_REVOKE = createCastleRevoke();
+    public static final int[] MATERIAL = { 0, 0, 100, 290, 310, 500, 950, 0 };
+    private static final int[] CASTLE_REVOKE = createCastleRevoke();
     private static final int[] CASTLE_ROOK = createCastleRook();
     private static final long[] ZOBRIST = createZobrist();
 
@@ -71,15 +71,36 @@ public class Board {
     }
 
     public void doMove(int move) {
-        moveStack[ply()] = joinInts(counter, flags);
+        push();
         move(move);
+    }
+
+    public void doNullMove() {
+        push();
+        flags &= CASTLE_MASK;
+        counter += INCREMENT_FIFTY_PLY;
     }
 
     public void undoMove(int move) {
         long data = moveStack[ply() - 1];
         move(move);
-        counter = highInt(data);
-        flags = lowInt(data);
+        pop(data);
+    }
+
+    public void undoNullMove() {
+        long data = moveStack[ply() - 1];
+        pop(data);
+    }
+
+    void push() {
+        moveStack[ply()] = (material[0] & 0xFFFFL) << 48 | (material[1] & 0xFFFFL) << 32 | (flags & 0x3FFL) << 22 | counter;
+    }
+
+    void pop(long data) {
+        material[0] = (int) ((data >>> 48) & 0xFFFF);
+        material[1] = (int) ((data >>> 32) & 0xFFFF);
+        flags = (int) ((data >>> 22) & 0x3FF);
+        counter = (int) (data & 0x3FFFFF);
     }
 
     private void move(int move) {
@@ -138,10 +159,6 @@ public class Board {
 
     private long zobrist(int sideToMove, int piece, int square) {
         return ZOBRIST[sideToMove << 9 | piece << 6 | square];
-    }
-
-    private long zobrist(int sideToMove, int flags) {
-        return ZOBRIST[0x400 | flags << 1 | sideToMove];
     }
 
     public static Board load(String fen) {
@@ -207,7 +224,7 @@ public class Board {
 
     private static long[] createZobrist() {
         Random random = new Random(0);
-        long[] zobrist = new long[0x800];
+        long[] zobrist = new long[0x1000];
         for (int i = 0; i < zobrist.length; i++) {
             zobrist[i] = random.nextLong();
         }
@@ -237,6 +254,14 @@ public class Board {
 
     public long hash() {
         return hash;
+    }
+
+    public long hash(int sideToMove) {
+        return hash ^ ZOBRIST[0x400 | flags << 1 | sideToMove];
+    }
+
+    public long hash(int sideToMove, int depth) {
+        return hash ^ ZOBRIST[0x400 | flags] ^ ZOBRIST[0x800 | depth << 1 | sideToMove];
     }
 
     public int[] getMoveList(int ply) {
@@ -269,5 +294,9 @@ public class Board {
 
     public int sideToMove() {
         return sideToMove;
+    }
+
+    public int material(int sideToMove) {
+        return material[sideToMove];
     }
 }

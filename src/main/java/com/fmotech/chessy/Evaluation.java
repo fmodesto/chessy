@@ -4,7 +4,6 @@ import static com.fmotech.chessy.BitOperations.bitCount;
 import static com.fmotech.chessy.BitOperations.highInt;
 import static com.fmotech.chessy.BitOperations.joinInts;
 import static com.fmotech.chessy.BitOperations.lowInt;
-import static com.fmotech.chessy.BitOperations.lowestBit;
 import static com.fmotech.chessy.BitOperations.lowestBitPosition;
 import static com.fmotech.chessy.BitOperations.nextLowestBit;
 import static com.fmotech.chessy.BitOperations.northFill;
@@ -40,7 +39,7 @@ public class Evaluation {
     private static final int[] KNIGHT_MOBILITY = range(0, 64).map(i -> (bitCount(MoveTables.KNIGHT[i]) - 1) * 6).toArray();
     private static final int[] KING_MOBILITY = range(0, 64).map(i -> (bitCount(MoveTables.KNIGHT[i]) / 2) * 2).toArray();
 
-    private static final long[][] PAWN_FREE = new long[][] {
+    public static final long[][] PAWN_FREE = new long[][] {
             range(0, 64).mapToLong(Utils::BIT).map(b -> northFill(shiftOne(b, NW) | shiftOne(b, N) | shiftOne(b, NE))).toArray(),
             range(0, 64).mapToLong(Utils::BIT).map(b -> southFill(shiftOne(b, SW) | shiftOne(b, S) | shiftOne(b, SE))).toArray() };
     private static final long[][] PAWN_FILE = new long[][] {
@@ -54,13 +53,18 @@ public class Evaluation {
             range(0, 64).map(i -> asList(0, 0, 1, 8, 16, 32, 64, 128).get(7 - RANK(i))).toArray() };
 
     public int evaluate(Board board, int sideToMove) {
-        long ev0 = evaluateSide(WHITE, BLACK, board);
-        long ev1 = evaluateSide(BLACK, WHITE, board);
+        long dataWhite = evaluateSide(WHITE, BLACK, board);
+        int pieceWhite = highInt(dataWhite);
+        int evaluationWhite = lowInt(dataWhite);
 
-//        if (highInt(ev1) < 6) ev0 += KING_MOBILITY[board.kingPosition(WHITE)] * (6 - highInt(ev1));
-//        if (highInt(ev0) < 6) ev1 += KING_MOBILITY[board.kingPosition(BLACK)] * (6 - highInt(ev0));
+        long dataBlack = evaluateSide(BLACK, WHITE, board);
+        int pieceBlack = highInt(dataBlack);
+        int evaluationBlack = lowInt(dataBlack);
 
-        return sideToMove != 0 ? lowInt(ev1) - lowInt(ev0) : lowInt(ev0) - lowInt(ev1);
+        if (pieceBlack < 6) evaluationWhite += KING_MOBILITY[board.kingPosition(WHITE)] * (6 - pieceBlack);
+        if (pieceWhite < 6) evaluationBlack += KING_MOBILITY[board.kingPosition(BLACK)] * (6 - pieceWhite);
+
+        return sideToMove != 0 ? evaluationBlack - evaluationWhite : evaluationWhite - evaluationBlack;
     }
 
     static long evaluateSide(int side, int otherSide, Board board) {
@@ -70,8 +74,8 @@ public class Evaluation {
 
         int king = board.kingPosition(side);
         long kingSurrounds = MoveTables.KING[board.kingPosition(otherSide)];
-        long pin = pinnedPieces(king, otherSide, board);
-        
+        long pin = pinnedPieces(king, side, board);
+
         long own = board.get(side);
         long enemy = board.get(otherSide);
         long pieces = own | enemy;
@@ -81,7 +85,7 @@ public class Evaluation {
             int from = lowestBitPosition(next);
             int ppos = PAWN_RUN[side][from];
             long m = BIT(from + (side == BLACK ? -8 : 8)) & ~pieces;
-            long attack = MoveTables.PAWN_ATTACK[side][from];
+            long attack = MoveTables.PAWN_ATTACK[side][from] & pieces;
             if ((attack & kingSurrounds) != 0) kingAttack += sparseBitCount(attack & kingSurrounds) << 4;
             if (TEST(from, pin)) {
                 if (DIR(from, board.kingPosition(side)) != 2) m = 0;
@@ -97,56 +101,53 @@ public class Evaluation {
             next = nextLowestBit(next);
         }
 
-//        next = board.get(KNIGHT) & own;
-//        while (next != 0) {
-//            pieceValue += 1;
-//            int from = lowestBitPosition(next);
-//            long attack = MoveTables.KNIGHT[from];
-//            if ((attack & kingSurrounds) != 0) kingAttack += sparseBitCount(attack & kingSurrounds) << 4;
-//            if (!TEST(from, pin)) mobility += KNIGHT_MOBILITY[from];
-//            next = nextLowestBit(next);
-//        }
-//
-//        pieces ^= BIT(board.kingPosition(otherSide)); //Opposite King doesn't block mobility at all
-//        next = board.get(QUEEN) & own;
-//        while (next != 0) {
-//            pieceValue += 4;
-//            int from = lowestBitPosition(next);
-//            long mask = (pin & lowestBit(next)) != 0 ? MASK(from, king) : -1;
-//            long attack = MoveGenerator.queenMove(from, pieces) & mask;
-//            if ((attack & kingSurrounds) != 0) kingAttack += sparseBitCount(attack & kingSurrounds) << 4;
-//            if (!TEST(from, pin)) mobility += bitCount(attack);
-//            next = nextLowestBit(next);
-//        }
-//
-//        pieces ^= (board.get(ROOK) | board.get(QUEEN)) & enemy; //Opposite Queen & Rook doesn't block mobility for bishop
-//        next = board.get(BISHOP) & own;
-//        while (next != 0) {
-//            pieceValue += 1;
-//            int from = lowestBitPosition(next);
-//            long mask = (pin & lowestBit(next)) != 0 ? MASK(from, king) : -1;
-//            long attack = MoveGenerator.bishopMove(from, pieces) & mask;
-//            if ((attack & kingSurrounds) != 0) kingAttack += sparseBitCount(attack & kingSurrounds) << 4;
-//            mobility += bitCount(attack) << (mask == -1 ? 0 : 3);
-//            next = nextLowestBit(next);
-//        }
-//
-//        pieces ^= board.get(ROOK) & enemy; //Opposite Queen doesn't block mobility for rook.
-//        pieces ^= board.get(ROOK) & own & ~pin; //Own non-pinned Rook doesn't block mobility for rook.
-//        next = board.get(ROOK) & own;
-//        while (next != 0) {
-//            pieceValue += 2;
-//            int from = lowestBitPosition(next);
-//            long mask = (pin & lowestBit(next)) != 0 ? MASK(from, king) : -1;
-//            long attack = MoveGenerator.rookMove(from, pieces) & mask;
-//            if ((attack & kingSurrounds) != 0) kingAttack += sparseBitCount(attack & kingSurrounds) << 4;
-//            mobility += bitCount(attack) << (mask == -1 ? 0 : 2);
-//            next = nextLowestBit(next);
-//        }
-//
-//        if (pieceValue == 1 && (board.get(PAWN) & own) == 0) mobility = -200; //No mating material
-//        if (pieceValue < 7) kingAttack = kingAttack * pieceValue / 7; //Reduce the bonus for attacking king squares
-//        if (pieceValue < 2) pieceValue = 2;
+        next = board.get(KNIGHT) & own;
+        while (next != 0) {
+            pieceValue += 1;
+            int from = lowestBitPosition(next);
+            long attack = MoveTables.KNIGHT[from];
+            if ((attack & kingSurrounds) != 0) kingAttack += sparseBitCount(attack & kingSurrounds) << 4;
+            if (!TEST(from, pin)) mobility += KNIGHT_MOBILITY[from];
+            next = nextLowestBit(next);
+        }
+
+        pieces ^= BIT(board.kingPosition(otherSide)); //Opposite King doesn't block mobility at all
+        next = board.get(QUEEN) & own;
+        while (next != 0) {
+            pieceValue += 4;
+            int from = lowestBitPosition(next);
+            long attack = MoveGenerator.queenMove(from, pieces);
+            if ((attack & kingSurrounds) != 0) kingAttack += sparseBitCount(attack & kingSurrounds) << 4;
+            mobility += TEST(from, pin) ? bitCount(attack & MASK(from, king)) : bitCount(attack);
+            next = nextLowestBit(next);
+        }
+
+        pieces ^= (board.get(ROOK) | board.get(QUEEN)) & enemy; //Opposite Queen & Rook doesn't block mobility for bishop
+        next = board.get(BISHOP) & own;
+        while (next != 0) {
+            pieceValue += 1;
+            int from = lowestBitPosition(next);
+            long attack = MoveGenerator.bishopMove(from, pieces);
+            if ((attack & kingSurrounds) != 0) kingAttack += sparseBitCount(attack & kingSurrounds) << 4;
+            mobility += TEST(from, pin) ? bitCount(attack & MASK(from, king)) : bitCount(attack) << 3;
+            next = nextLowestBit(next);
+        }
+
+        pieces ^= board.get(ROOK) & enemy; //Opposite Queen doesn't block mobility for rook.
+        pieces ^= board.get(ROOK) & own & ~pin; //Own non-pinned Rook doesn't block mobility for rook.
+        next = board.get(ROOK) & own;
+        while (next != 0) {
+            pieceValue += 2;
+            int from = lowestBitPosition(next);
+            long attack = MoveGenerator.rookMove(from, pieces);
+            if ((attack & kingSurrounds) != 0) kingAttack += sparseBitCount(attack & kingSurrounds) << 4;
+            mobility += TEST(from, pin) ? bitCount(attack & MASK(from, king)) : bitCount(attack) << 2;
+            next = nextLowestBit(next);
+        }
+
+        if (pieceValue == 1 && (board.get(PAWN) & own) == 0) mobility = -200; //No mating material
+        if (pieceValue < 7) kingAttack = kingAttack * pieceValue / 7; //Reduce the bonus for attacking king squares
+        if (pieceValue < 2) pieceValue = 2;
         return joinInts(pieceValue, mobility + kingAttack);
     }
 }

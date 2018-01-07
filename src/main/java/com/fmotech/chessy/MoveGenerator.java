@@ -32,6 +32,10 @@ import static com.fmotech.chessy.Utils.TEST;
 
 public class MoveGenerator {
 
+    private static final int QUEEN_PROMOTIONS = 1;
+    private static final int REST_PROMOTIONS = 2;
+    private static final int ALL_PROMOTIONS = 3;
+
     public static long countMoves(int depth, Board board, boolean div) {
         return perft(board.sideToMove(), depth, div, board);
     }
@@ -67,22 +71,22 @@ public class MoveGenerator {
         return generate(check, pin, sideToMove, 0, true, true, true, board);
     }
 
-    public static int[] generate(long check, long pin, int sideToMove, int ply, boolean capture, boolean nonCapture, boolean allPromotions, Board board) {
+    public static int[] generate(long check, long pin, int sideToMove, int ply, boolean active, boolean quiet, boolean allPromotions, Board board) {
         int[] moves = board.getMoveList(ply);
         moves[0] = 1;
 
         if (check != 0) {
-            generateCheckEscape(moves, sideToMove, check, pin, allPromotions, board);
+            generateCheckEscape(moves, sideToMove, check, pin, allPromotions ? ALL_PROMOTIONS : QUEEN_PROMOTIONS, board);
             return moves;
         }
-        if (capture)
-            generateCaptureMoves(moves, sideToMove, check, pin, allPromotions, board);
-        if (nonCapture)
-            generateNonCaptureMoves(moves, sideToMove, check, pin, allPromotions, board);
+        if (active)
+            generateActiveMoves(moves, sideToMove, pin, board);
+        if (quiet)
+            generateQuietMoves(moves, sideToMove, pin, board);
         return moves;
     }
 
-    private static void generateCheckEscape(int[] moves, int sideToMove, long check, long pin, boolean allPromotions, Board board) {
+    private static void generateCheckEscape(int[] moves, int sideToMove, long check, long pin, int flags, Board board) {
         long own = board.get(sideToMove);
         long enemy = board.get(OTHER(sideToMove));
         long pieces = own | enemy;
@@ -96,9 +100,9 @@ public class MoveGenerator {
         long capturers = attackingPieces(target, OTHER(sideToMove), board) & ~pin;
         while (capturers != 0) {
             int from = lowestBitPosition(capturers);
-            int piece = board.pieceType(lowestBit(capturers));
+            int piece = board.pieceType(BIT(from));
             if (piece == PAWN) {
-                registerPawnMove(moves, sideToMove, from, target, type, allPromotions);
+                registerPawnMove(moves, sideToMove, from, target, type, flags);
             } else {
                 moves[moves[0]++] = Move.create(from, target, piece, type, 0, sideToMove);
             }
@@ -130,7 +134,7 @@ public class MoveGenerator {
             int from = to + (sideToMove == BLACK ? 8 : -8);
             if (from >= 0 && from < 64) {
                 if ((BIT(from) & board.get(PAWN) & own & ~pin) != 0)
-                    registerPawnMove(moves, sideToMove, from, to, 0, allPromotions);
+                    registerPawnMove(moves, sideToMove, from, to, 0, flags);
 
                 int jump = sideToMove == BLACK ? from + 8 : from - 8;
                 if (RANK(to) == (sideToMove == BLACK ? 4 : 3) && (pieces & BIT(from)) == 0
@@ -156,14 +160,14 @@ public class MoveGenerator {
         long next = MoveTables.KING[king] & mask;
         while (next != 0) {
             int to = lowestBitPosition(next);
-            long bit = lowestBit(next);
+            long bit = BIT(to);
             if (!positionAttacked(to, sideToMove, board))
                 moves[moves[0]++] = Move.create(king, to, KING, (bit & enemy) != 0 ? board.pieceType(bit) : 0, 0, sideToMove);
             next = nextLowestBit(next);
         }
     }
 
-    public static void generateNonCaptureMoves(int[] moves, int sideToMove, long check, long pin, boolean allPromotions, Board board) {
+    public static void generateQuietMoves(int[] moves, int sideToMove, long pin, Board board) {
         long own = board.get(sideToMove);
         long enemy = board.get(OTHER(sideToMove));
         long pieces = own | enemy;
@@ -172,16 +176,22 @@ public class MoveGenerator {
         long next = board.get(PAWN) & own;
         while (next != 0) {
             int from = lowestBitPosition(next);
-            long mask = (pin & lowestBit(next)) != 0 ? ~MASK(from, king) : 0;
+            long mask = TEST(from, pin) ? MASK(from, king) : -1;
             int delta = sideToMove == WHITE ? 8 : -8;
             int to = from + delta;
-            if (!TEST(to, pieces | mask)) {
-                registerPawnMove(moves, sideToMove, from, to, 0, allPromotions);
+            if (!TEST(to, pieces | ~mask)) {
+                registerPawnMove(moves, sideToMove, from, to, 0, REST_PROMOTIONS);
                 if (RANK(from) == (sideToMove == WHITE ? 1 : 6)) {
                     to += delta;
-                    if (!TEST(to, pieces | mask))
+                    if (!TEST(to, pieces | ~mask))
                         moves[moves[0]++] = Move.create(from, to, PAWN, 0, 0, sideToMove);
                 }
+            }
+            if (RANK(from) == (sideToMove == BLACK ? 1 : 6)) {
+                long target = MoveTables.PAWN_ATTACK[sideToMove][from] & enemy & mask;
+                registerAttackMoves(moves, sideToMove, from, PAWN, target, ROOK, board);
+                registerAttackMoves(moves, sideToMove, from, PAWN, target, BISHOP, board);
+                registerAttackMoves(moves, sideToMove, from, PAWN, target, KNIGHT, board);
             }
             next = nextLowestBit(next);
         }
@@ -189,7 +199,7 @@ public class MoveGenerator {
         next = board.get(KNIGHT) & own;
         while (next != 0) {
             int from = lowestBitPosition(next);
-            long mask = (pin & lowestBit(next)) != 0 ? MASK(from, king) : -1;
+            long mask = TEST(from, pin) ? MASK(from, king) : -1;
             long target = MoveTables.KNIGHT[from] & ~pieces & mask;
             registerMoves(moves, sideToMove, from, KNIGHT, target);
             next = nextLowestBit(next);
@@ -198,7 +208,7 @@ public class MoveGenerator {
         next = board.get(BISHOP) & own;
         while (next != 0) {
             int from = lowestBitPosition(next);
-            long mask = (pin & lowestBit(next)) != 0 ? MASK(from, king) : -1;
+            long mask = TEST(from, pin) ? MASK(from, king) : -1;
             long target = bishopMove(from, pieces) & ~pieces & mask;
             registerMoves(moves, sideToMove, from, BISHOP, target);
             next = nextLowestBit(next);
@@ -207,10 +217,10 @@ public class MoveGenerator {
         next = board.get(ROOK) & own;
         while (next != 0) {
             int from = lowestBitPosition(next);
-            long mask = (pin & lowestBit(next)) != 0 ? MASK(from, king) : -1;
+            long mask = TEST(from, pin) ? MASK(from, king) : -1;
             long target = rookMove(from, pieces) & ~pieces & mask;
             registerMoves(moves, sideToMove, from, ROOK, target);
-            if (board.castle() != 0 && check == 0) {
+            if (board.castle() != 0) {
                 if (sideToMove == BLACK) {
                     if ((board.castle() & 128) != 0 && (from == 63) && (RATT1(63, pieces) & BIT(60)) != 0
                             && !(positionAttacked(61, sideToMove, board) | positionAttacked(62, sideToMove, board))) {
@@ -237,7 +247,7 @@ public class MoveGenerator {
         next = board.get(QUEEN) & own;
         while (next != 0) {
             int from = lowestBitPosition(next);
-            long mask = (pin & lowestBit(next)) != 0 ? MASK(from, king) : -1;
+            long mask = TEST(from, pin) ? MASK(from, king) : -1;
             long target = queenMove(from, pieces) & ~pieces & mask;
             registerMoves(moves, sideToMove, from, QUEEN, target);
             next = nextLowestBit(next);
@@ -246,7 +256,7 @@ public class MoveGenerator {
         generateKingMoves(moves, sideToMove, ~pieces, board);
     }
 
-    public static void generateCaptureMoves(int[] moves, int sideToMove, long check, long pin, boolean allPromotions, Board board) {
+    public static void generateActiveMoves(int[] moves, int sideToMove, long pin, Board board) {
         long own = board.get(sideToMove);
         long enemy = board.get(OTHER(sideToMove));
         long pieces = own | enemy;
@@ -256,22 +266,22 @@ public class MoveGenerator {
         long next = board.get(PAWN) & own;
         while (next != 0) {
             int from = lowestBitPosition(next);
-            long mask = (pin & lowestBit(next)) != 0 ? MASK(from, king) : -1;
+            long mask = TEST(from, pin) ? MASK(from, king) : -1;
             long target = MoveTables.PAWN_ATTACK[sideToMove][from] & (enPassant | enemy) & mask;
             if ((target & enPassant) != 0) {
                 long ray = RATT1(from, pieces ^ board.enPassantPawn(sideToMove));
-                if ((ray & BIT(king)) != 0 && (ray & (board.get(ROOK) | board.get(QUEEN)) & enemy) != 0) {
+                if (TEST(king, ray) && (ray & (board.get(ROOK) | board.get(QUEEN)) & enemy) != 0) {
                     target ^= enPassant;
                 }
             }
-            boolean promotion = RANK(from) == (sideToMove == BLACK ? 1 : 6);
-            if (target != 0 && promotion && allPromotions) {
+            if (RANK(from) == (sideToMove == BLACK ? 1 : 6)) {
                 registerAttackMoves(moves, sideToMove, from, PAWN, target, QUEEN, board);
-                registerAttackMoves(moves, sideToMove, from, PAWN, target, ROOK, board);
-                registerAttackMoves(moves, sideToMove, from, PAWN, target, BISHOP, board);
-                registerAttackMoves(moves, sideToMove, from, PAWN, target, KNIGHT, board);
+                int to = from + (sideToMove == WHITE ? 8 : -8);
+                if (!TEST(to, pieces | ~mask)) {
+                    moves[moves[0]++] = Move.create(from, to, PAWN, 0, QUEEN, sideToMove);
+                }
             } else {
-                registerAttackMoves(moves, sideToMove, from, PAWN, target, promotion ? QUEEN : 0, board);
+                registerAttackMoves(moves, sideToMove, from, PAWN, target, 0, board);
             }
             next = nextLowestBit(next);
         }
@@ -279,7 +289,7 @@ public class MoveGenerator {
         next = board.get(KNIGHT) & own;
         while (next != 0) {
             int from = lowestBitPosition(next);
-            long mask = (pin & lowestBit(next)) != 0 ? MASK(from, king) : -1;
+            long mask = TEST(from, pin) ? MASK(from, king) : -1;
             long target = MoveTables.KNIGHT[from] & enemy & mask;
             registerAttackMoves(moves, sideToMove, from, KNIGHT, target, 0, board);
             next = nextLowestBit(next);
@@ -288,7 +298,7 @@ public class MoveGenerator {
         next = board.get(BISHOP) & own;
         while (next != 0) {
             int from = lowestBitPosition(next);
-            long mask = (pin & lowestBit(next)) != 0 ? MASK(from, king) : -1;
+            long mask = TEST(from, pin) ? MASK(from, king) : -1;
             long target = bishopMove(from, pieces) & enemy & mask;
             registerAttackMoves(moves, sideToMove, from, BISHOP, target, 0, board);
             next = nextLowestBit(next);
@@ -297,7 +307,7 @@ public class MoveGenerator {
         next = board.get(ROOK) & own;
         while (next != 0) {
             int from = lowestBitPosition(next);
-            long mask = (pin & lowestBit(next)) != 0 ? MASK(from, king) : -1;
+            long mask = TEST(from, pin) ? MASK(from, king) : -1;
             long target = rookMove(from, pieces) & enemy & mask;
             registerAttackMoves(moves, sideToMove, from, ROOK, target, 0, board);
             next = nextLowestBit(next);
@@ -306,7 +316,7 @@ public class MoveGenerator {
         next = board.get(QUEEN) & own;
         while (next != 0) {
             int from = lowestBitPosition(next);
-            long mask = (pin & lowestBit(next)) != 0 ? MASK(from, king) : -1;
+            long mask = TEST(from, pin) ? MASK(from, king) : -1;
             long target = queenMove(from, pieces) & enemy & mask;
             registerAttackMoves(moves, sideToMove, from, QUEEN, target, 0, board);
             next = nextLowestBit(next);
@@ -323,22 +333,25 @@ public class MoveGenerator {
         }
     }
 
-    private static void registerPawnMove(int[] moves, int sideToMove, int from, int to, int capture, boolean allPromotions) {
+    private static void registerPawnMove(int[] moves, int sideToMove, int from, int to, int capture, int flags) {
         boolean promotion = RANK(from) == (sideToMove == BLACK ? 1 : 6);
-        if (promotion && allPromotions) {
+        if (promotion & (flags & QUEEN_PROMOTIONS) != 0) {
             moves[moves[0]++] = Move.create(from, to, PAWN, capture, QUEEN, sideToMove);
+        }
+        if (promotion & (flags & REST_PROMOTIONS) != 0) {
             moves[moves[0]++] = Move.create(from, to, PAWN, capture, ROOK, sideToMove);
             moves[moves[0]++] = Move.create(from, to, PAWN, capture, BISHOP, sideToMove);
             moves[moves[0]++] = Move.create(from, to, PAWN, capture, KNIGHT, sideToMove);
-        } else {
-            moves[moves[0]++] = Move.create(from, to, PAWN, capture, promotion ? QUEEN : 0, sideToMove);
+        }
+        if (!promotion) {
+            moves[moves[0]++] = Move.create(from, to, PAWN, capture, 0, sideToMove);
         }
     }
 
     private static void registerAttackMoves(int[] moves, int sideToMove, int from, int piece, long target, int promotion, Board board) {
         while (target != 0) {
             int to = lowestBitPosition(target);
-            long capture = lowestBit(target);
+            long capture = BIT(to);
             moves[moves[0]++] = Move.create(from, to, piece, board.pieceType(capture), promotion, sideToMove);
             target = nextLowestBit(target);
         }
@@ -358,7 +371,7 @@ public class MoveGenerator {
         return false;
     }
 
-    private static long attackingPieces(int position, int sideToMove, Board board) {
+    public static long attackingPieces(int position, int sideToMove, Board board) {
         long enemy = board.get(OTHER(sideToMove));
         long pieces = board.get(sideToMove) | enemy;
         return MoveTables.PAWN_ATTACK[sideToMove][position] & board.get(PAWN) & enemy

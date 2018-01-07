@@ -38,4 +38,8 @@ public class Move {
     public static int sideToMove(int move) {
         return (move >>> 18) & SIDE_MASK;
     }
+
+    public static String debug(int move) {
+        return String.format("%s type: %d capture: %d side: %d", Formatter.moveToFen(move), piece(move), capture(move), sideToMove(move));
+    }
 }

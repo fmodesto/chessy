@@ -2,6 +2,9 @@ package com.fmotech.chessy.oli;
 
 import java.util.Map;
 
+import static com.fmotech.chessy.oli.OliThink.FROM;
+import static com.fmotech.chessy.oli.OliThink.TO;
+
 public class OliUtils {
 
     static {
@@ -29,5 +32,11 @@ public class OliUtils {
     public static int evaluate(String fen) {
         OliThink._parse_fen(fen);
         return OliThink.eval(OliThink.onmove);
+    }
+
+    public static int see(String fen, String move) {
+        OliThink._parse_fen(fen);
+        int m = OliThink.parseMove(move, OliThink.onmove, 0);
+        return OliThink.swap(m);
     }
 }
