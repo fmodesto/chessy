@@ -222,7 +222,7 @@ public class OliThink {
 
 		@Override
 		public long enPassantPawn(int sideToMove) {
-			return sideToMove == 1 ? Utils.BIT(ENPASS()) << 8 : Utils.BIT(ENPASS()) >>> 8;
+			return sideToMove == 1 ? enPassant(sideToMove) << 8 : enPassant(sideToMove) >>> 8;
 		}
 	}
 
@@ -1525,6 +1525,8 @@ public class OliThink {
 	}
 
 	private static boolean check() {
+		if (hashes.size() == 1030968)
+			System.out.println("HERE");
 		return hashes.add(hashb);
 	}
 

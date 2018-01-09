@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals;
 public class EpdTests {
 
     public static final int TIME = 30;
-    public static final int EXECUTE = 69;
+    public static final int EXECUTE = -1;
     private final EpdReader.Epd epd;
 
     @Parameters
@@ -61,15 +61,15 @@ public class EpdTests {
         Engine engine = new Engine(Board.load(fen));
         String calc = engine.calc(time, 64);
         System.out.println("Mine: " + calc);
-        String oli = OliUtils.think(fen, time, 64);
-        System.out.println("Oli: " + oli);
+//        String oli = OliUtils.think(fen, time, 64);
+//        System.out.println("Oli: " + oli);
 //        for (int i = 0; i < Math.min(OliThink.hashes.size(), Engine.hashes.size()); i++) {
 //            if (OliThink.hashes.get(i) != (long) Engine.hashes.get(i)) {
 //                System.err.println("FAILURE AT " + i);
 //                throw new AssertionError("FAILURE AT " + i);
 //            }
 //        }
-//        assertEquals(OliThink.hashes, Engine.hashes);
+        assertEquals(OliThink.hashes, Engine.hashes);
 //        for (int i = 0; i < 20; i++) {
 //            Assert.assertArrayEquals("Iter: " + i, Engine.mem[i], OliThink.mem[i]);
 //        }

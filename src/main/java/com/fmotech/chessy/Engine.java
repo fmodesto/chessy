@@ -1,7 +1,6 @@
 package com.fmotech.chessy;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static com.fmotech.chessy.BitOperations.bitCount;
@@ -22,8 +21,8 @@ public class Engine {
 
     private static final int CNODES = 0xFFFF;
 
-    private HashTable hashDb = new HashTable(0x200000);
-    private HashTable hashDp = new HashTable(0x400000);
+    private BoardTable hashDb = new BoardTable(0x200000);
+    private BoardTable hashDp = new BoardTable(0x400000);
 
     private int[][] pv = new int[64][64];
     private int[] pvlength = new int[64];
@@ -89,6 +88,7 @@ public class Engine {
     public static List<Long> hashes = new ArrayList<>();
 
     private int quiesce(long ch, int c, int ply, int alpha, int beta) {
+//        check();
         int i, w, best = -32000;
         int oc = OTHER(c);
         int cmat = board.material(c) - board.material(oc);
@@ -105,7 +105,7 @@ public class Engine {
         } while(false);
 
         long pin = pinnedPieces(board.kingPosition(c), c, board);
-        int[] moveList = MoveGenerator.generate(ch, pin, c, ply, true, false, false, board);
+        int[] moveList = MoveGenerator.generate(ch, pin, c, ply, true, false, true, board);
         if (ch != 0 && moveList[0] == 1) return -32000 + ply;
 
         for (i = 1; i < moveList[0]; i++) {
@@ -132,6 +132,8 @@ public class Engine {
     }
 
     private boolean check() {
+        if (hashes.size() == 1030968)
+            System.out.println("HERE");
         return hashes.add(board.hash());
     }
 

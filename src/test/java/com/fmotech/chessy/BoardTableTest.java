@@ -8,11 +8,11 @@ import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 
-public class HashTableTest {
+public class BoardTableTest {
 
     @Test
     public void test() {
-        HashTable table = new HashTable(1 << 20);
+        BoardTable table = new BoardTable(1 << 20);
 
         Random random = new Random(0);
         List<Long> hashes = new ArrayList<>();
