@@ -1,6 +1,7 @@
 /* OliThink5 Java(c) Oliver Brausch 04.Jan.2018, ob112@web.de, http://brausch.org */
 package com.fmotech.chessy.oli;
 
+import com.fmotech.chessy.BitOperations;
 import com.fmotech.chessy.Board;
 import com.fmotech.chessy.Evaluation;
 import com.fmotech.chessy.IBoard;
@@ -384,15 +385,16 @@ public class OliThink {
 	}
 
 	static byte getLsb(long bm) {
-		int n = (int) LOW32(bm);
-		if (n != 0) {
-			if (LOW16(n) != 0) return LSB[LOW16(n)];
-			else return (byte)(16 | LSB[LOW16(n >> 16)]);
-		} else {
-			n = (int)(bm >> 32);
-			if (LOW16(n) != 0) return (byte)(32 | LSB[LOW16(n)]);
-			else return (byte)(48 | LSB[LOW16(n >> 16)]);
-		}
+//		int n = (int) LOW32(bm);
+//		if (n != 0) {
+//			if (LOW16(n) != 0) return LSB[LOW16(n)];
+//			else return (byte)(16 | LSB[LOW16(n >> 16)]);
+//		} else {
+//			n = (int)(bm >> 32);
+//			if (LOW16(n) != 0) return (byte)(32 | LSB[LOW16(n)]);
+//			else return (byte)(48 | LSB[LOW16(n >> 16)]);
+//		}
+		return (byte) BitOperations.lowestBitPosition(bm);
 	}
 
 	static byte _slow_lsb(long bm) {
@@ -408,10 +410,7 @@ public class OliThink {
 	}
 
 	static byte bitcnt (long n) {
-	     return (byte)(BITC[LOW16(n)]
-	         +  BITC[LOW16(n >> 16)]
-	         +  BITC[LOW16(n >> 32)]
-	         +  BITC[LOW16(n >> 48)]);
+	     return (byte) BitOperations.bitCount(n);
 	}
 
 	static int identPiece(int f) {
@@ -470,7 +469,8 @@ public class OliThink {
 	}
 
 	static long  attacked(int f, int c) {
-		return (PCAP(f, c) & pieceb[PAWN]) | reach(f, c);
+		return MoveGenerator.attackingPieces(f, c, adapter);
+//		return (PCAP(f, c) & pieceb[PAWN]) | reach(f, c);
 	}
 
 	static void _init_pawns(long[] moves, long[] caps, long[] freep, long[] filep, long[] helpp, int c) {
@@ -666,20 +666,21 @@ public class OliThink {
 	}
 
 	static long pinnedPieces(int f, int oc) {
-		long pin = 0L;
-		long b = ((RXRAY1(f) | RXRAY2(f)) & colorb[oc]) & RQU();
-		while (b != 0) {
-			int t = getLsb(b);
-			b ^= BIT[t];
-			pin |= RCAP(t, oc) & ROCC(f);
-		}
-		b = ((BXRAY3(f) | BXRAY4(f)) & colorb[oc]) & BQU();
-		while (b != 0) {
-			int t = getLsb(b);
-			b ^= BIT[t];
-			pin |= BCAP(t, oc) & BOCC(f);
-		}
-		return pin;
+		return MoveGenerator.pinnedPieces(f, oc^1, adapter);
+//		long pin = 0L;
+//		long b = ((RXRAY1(f) | RXRAY2(f)) & colorb[oc]) & RQU();
+//		while (b != 0) {
+//			int t = getLsb(b);
+//			b ^= BIT[t];
+//			pin |= RCAP(t, oc) & ROCC(f);
+//		}
+//		b = ((BXRAY3(f) | BXRAY4(f)) & colorb[oc]) & BQU();
+//		while (b != 0) {
+//			int t = getLsb(b);
+//			b ^= BIT[t];
+//			pin |= BCAP(t, oc) & BOCC(f);
+//		}
+//		return pin;
 	}
 
 	static byte getDir(int f, int t) {
@@ -1631,8 +1632,6 @@ public class OliThink {
 	static int st = 0;
 	static boolean post = true;
 
-	public static long[][] mem = new long[20][HSIZEB];
-
 	static int calc(int sd, int tm) {
 			int i, j, t1 = 0, m2go = 32;
 			long ch = attacked(kingpos[onmove], onmove);
@@ -1665,7 +1664,6 @@ public class OliThink {
 					System.out.printf("%2d %5d %6d %9d  ", iter, value[iter], t1, (int)(nodes + qnodes));
 					displaypv(); printf("\n");
 				}
-				System.arraycopy(hashDB, 0, mem[iter], 0, hashDB.length);
 				if (!pondering && (iter >= 32000-value[iter] || sabort || t1 > searchtime/2)) break;
 			}
             pondering = false;

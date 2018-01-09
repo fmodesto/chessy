@@ -2,6 +2,9 @@ package com.fmotech.chessy;
 
 import java.util.Random;
 
+import static com.fmotech.chessy.BitOperations.highInt;
+import static com.fmotech.chessy.BitOperations.joinInts;
+import static com.fmotech.chessy.BitOperations.lowInt;
 import static com.fmotech.chessy.Utils.BIT;
 import static com.fmotech.chessy.Utils.OTHER;
 import static java.lang.Character.isSpaceChar;
@@ -70,18 +73,12 @@ public class Board implements IBoard {
     }
 
     public void doMove(int move) {
-        push();
+        moveStack[ply()] = (material[0] & 0xFFFFL) << 48 | (material[1] & 0xFFFFL) << 32 | (flags & 0x3FFL) << 22 | counter;
         move(move);
     }
 
-//    public void doMove(int move, String type) {
-//        System.out.println(type + " Do   " + Formatter.moveToFen(move));
-//        push();
-//        move(move);
-//    }
-//
     public void doNullMove() {
-        push();
+        moveStack[ply()] = joinInts(flags, counter);
         flags &= CASTLE_MASK;
         counter += INCREMENT_FIFTY_PLY;
     }
@@ -89,23 +86,16 @@ public class Board implements IBoard {
     public void undoMove(int move) {
         long data = moveStack[ply() - 1];
         move(move);
-        pop(data);
-    }
-
-    public void undoNullMove() {
-        long data = moveStack[ply() - 1];
-        pop(data);
-    }
-
-    void push() {
-        moveStack[ply()] = (material[0] & 0xFFFFL) << 48 | (material[1] & 0xFFFFL) << 32 | (flags & 0x3FFL) << 22 | counter;
-    }
-
-    void pop(long data) {
         material[0] = (int) ((data >>> 48) & 0xFFFF);
         material[1] = (int) ((data >>> 32) & 0xFFFF);
         flags = (int) ((data >>> 22) & 0x3FF);
         counter = (int) (data & 0x3FFFFF);
+    }
+
+    public void undoNullMove() {
+        long data = moveStack[ply() - 1];
+        flags = highInt(data);
+        counter = lowInt(data);
     }
 
     private void move(int move) {

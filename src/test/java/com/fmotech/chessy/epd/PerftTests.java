@@ -38,7 +38,7 @@ public class PerftTests {
 
     @Test
     public void execute() {
-        System.out.println(epd.board);
+        System.out.println(epd.fen);
         epd.actions.stream().limit(epd.actions.size() - SKIP).forEach(e -> execute(parseLong(e.parameter), epd.board, e.action.charAt(1) - '0'));
         System.out.println("Done");
     }

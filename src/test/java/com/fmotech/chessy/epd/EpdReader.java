@@ -72,7 +72,7 @@ public class EpdReader {
 
         @Override
         public String toString() {
-            return "Epd{board=" + board + ", actions=" + actions + '}';
+            return "Epd{board=" + fen + ", actions=" + actions + '}';
         }
     }
 

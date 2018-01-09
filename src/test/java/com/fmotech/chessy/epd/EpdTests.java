@@ -40,10 +40,6 @@ public class EpdTests {
 
     @Test
     public void execute() {
-        for (int i = 0; i < 20; i++) {
-            Arrays.fill(Engine.mem[i], 0);
-            Arrays.fill(OliThink.mem[i], 0);
-        }
         Engine.hashes.clear();
         OliThink.hashes.clear();
         System.out.println(epd.fen);
@@ -62,10 +58,11 @@ public class EpdTests {
     }
 
     private String think(String fen, int time) {
-        System.out.println("Oli: " + OliUtils.think(fen, time, 64));
-        System.out.println("Mine: ");
         Engine engine = new Engine(Board.load(fen));
         String calc = engine.calc(time, 64);
+//        System.out.println("Mine: " + calc);
+//        String calc = OliUtils.think(fen, time, 64);
+//        System.out.println("Oli: " + oli);
 //        for (int i = 0; i < Math.min(OliThink.hashes.size(), Engine.hashes.size()); i++) {
 //            if (OliThink.hashes.get(i) != (long) Engine.hashes.get(i)) {
 //                System.err.println("FAILURE AT " + i);
@@ -73,9 +70,10 @@ public class EpdTests {
 //            }
 //        }
 //        assertEquals(OliThink.hashes, Engine.hashes);
-        for (int i = 0; i < 20; i++) {
-            Assert.assertArrayEquals("Iter: " + i, Engine.mem[i], OliThink.mem[i]);
-        }
+//        for (int i = 0; i < 20; i++) {
+//            Assert.assertArrayEquals("Iter: " + i, Engine.mem[i], OliThink.mem[i]);
+//        }
+//        assertEquals(oli, calc);
         return calc;
     }
 

@@ -1,6 +1,7 @@
 package com.fmotech.chessy;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static com.fmotech.chessy.BitOperations.bitCount;
@@ -19,18 +20,10 @@ public class Engine {
 
     private static final int nullvar[] = new int[]{13, 43, 149, 519, 1809, 6311, 22027};
 
-    private static final int HSIZEB = 0x200000;
-    private static final int HMASKB = HSIZEB - 1;
-    private static final long HINVB = 0xFFFFFFFF00000000L | (0xFFFFFFFFL & ~HMASKB);
-
-    private static final int HSIZEP = 0x400000;
-    private static final int HMASKP = HSIZEP - 1;
-    private static final long HINVP = 0xFFFFFFFF00000000L | (0xFFFFFFFFL & ~HMASKP);
-
     private static final int CNODES = 0xFFFF;
 
-    private long[] hashDB = new long[HSIZEB];
-    private long[] hashDP = new long[HSIZEP];
+    private HashTable hashDb = new HashTable(0x200000);
+    private HashTable hashDp = new HashTable(0x400000);
 
     private int[][] pv = new int[64][64];
     private int[] pvlength = new int[64];
@@ -41,7 +34,7 @@ public class Engine {
     private int[] killer = new int[128];
     private int[] history = new int[0x1000];
 
-    final static int[] value = new int[64];
+    final int[] value = new int[64];
     int iter = 0;
 
     private Board board;
@@ -49,16 +42,13 @@ public class Engine {
     private long nodes = 0;
     private long qnodes = 0;
 
-    static long searchtime, maxtime, starttime;
+    long searchtime, maxtime, starttime;
     boolean sabort, noabort;
-    static boolean ponder = false, pondering = false;
     private See see = new See();
 
     public Engine(Board board) {
         this.board = board;
     }
-
-    public static long[][] mem = new long[20][HSIZEB];
 
     public String calc(int time, int depth) {
         long ch = attackingPieces(board.kingPosition(board.sideToMove()), board.sideToMove(), board);;
@@ -73,17 +63,15 @@ public class Engine {
         maxtime = time;
 
         starttime = System.currentTimeMillis();
-        System.out.println(depth);
 
         for (iter = 1; iter <= depth; iter++) {
             noabort = false;
-            value[iter] = search(ch, board.sideToMove(), iter, 0, -32000, 32000, 1, 0);
+            value[iter] = search(ch, board.sideToMove(), iter, 0, -32000, 32000, true, false);
             t1 = (int)(System.currentTimeMillis() - starttime);
             if (sabort && pvlength[0] == 0 && (iter--) != 0) break;
             if (pvlength[0] > 0) {
                 System.out.printf("%2d %5d %6d %9d  %s\n", iter, value[iter], t1, (int)(nodes + qnodes), displaypv());
             }
-            System.arraycopy(hashDB, 0, mem[iter], 0, hashDB.length);
             if ((iter >= 32000-value[iter] || sabort || t1 > searchtime/2)) break;
         }
         System.out.printf("move %s\n", Formatter.moveToFen(pv[0][0]));
@@ -104,7 +92,6 @@ public class Engine {
     public static List<Long> hashes = new ArrayList<>();
 
     private int quiesce(long ch, int c, int ply, int alpha, int beta) {
-//        check();
         int i, w, best = -32000;
         int oc = OTHER(c);
         int cmat = board.material(c) - board.material(oc);
@@ -151,7 +138,7 @@ public class Engine {
         return hashes.add(board.hash());
     }
 
-    private int search(long ch, int c, int d, int ply, int alpha, int beta, int pvnode, int isnull) {
+    private int search(long ch, int c, int d, int ply, int alpha, int beta, boolean pvnode, boolean allowNullMoves) {
 //        check();
         int oc = OTHER(c);
         int w = board.material(c) - board.material(oc);
@@ -160,7 +147,7 @@ public class Engine {
         if (ply == 63) return evaluation.evaluate(board, c) + w;
         if ((++nodes & CNODES) == 0) {
             long consumed = System.currentTimeMillis() - starttime;
-            if (!pondering && (consumed > maxtime || (consumed > searchtime && !noabort))) sabort = true;
+            if ((consumed > maxtime || (consumed > searchtime && !noabort))) sabort = true;
         }
         if (sabort) return 0;
 
@@ -171,11 +158,10 @@ public class Engine {
         hstack[board.ply()] = hp;
 
         long hb = board.hash(c, d);
-        long he = hashDB[(int) (hb & HMASKB)];
-        if (((he ^ hb) & HINVB) == 0) {
-            w = ((int) (he & 0xFFFF)) - 32768;
-            if ((he & 0x10000) != 0) {
-                isnull = 0;
+        if (hashDb.containsKey(hb)) {
+            w = (hashDb.get(hb) & 0xFFFF) - 32768;
+            if ((hashDb.get(hb) & 0x10000) != 0) {
+                allowNullMoves = false;
                 if (w <= alpha) return alpha;
             } else {
                 if (w >= beta) return beta;
@@ -183,35 +169,32 @@ public class Engine {
         }
 
         long pin = pinnedPieces(board.kingPosition(c), c, board);
-        if (pvnode == 0 && ch == 0 && isnull != 0 && d > 1 && bitCount(board.get(c) & ~board.get(PAWN) & ~pin) > 2) {
+        if (!pvnode && ch == 0 && allowNullMoves && d > 1 && bitCount(board.get(c) & ~board.get(PAWN) & ~pin) > 2) {
             int R = (10 + d + nullVariance(w - beta)) / 4;
             if (R > d) R = d;
             board.doNullMove();
-            w = -search(0L, oc, d - R, ply + 1, -beta, -alpha, 0, 0); //Null Move Search
+            w = -search(0L, oc, d - R, ply + 1, -beta, -alpha, false, false); //Null Move Search
             board.undoNullMove();
             if (!sabort && w >= beta) {
-                hashDB[(int) (hb & HMASKB)] = (hb & HINVB) | (w + 32768);
+                hashDb.put(hb, w + 32768);
                 return beta;
             }
         }
 
         int hmove = 0;
         if (ply > 0) {
-            he = hashDP[(int) (hp & HMASKP)];
-            if (((he ^ hp) & HINVP) == 0) hmove = (int) (he & HMASKP);
-
+            hmove = hashDp.get(hp);
             if (d >= 4 && hmove == 0) { // Simple version of Internal Iterative Deepening
-                w = search(ch, c, d - 3, ply, alpha, beta, pvnode, 0);
-                he = hashDP[(int) (hp & HMASKP)];
-                if (((he ^ hp) & HINVP) == 0) hmove = (int) (he & HMASKP);
+                search(ch, c, d - 3, ply, alpha, beta, pvnode, false);
+                hmove = hashDp.get(hp);
             }
         } else {
             hmove = retPVMove(c, ply, ch, pin);
         }
 
-        int best = pvnode != 0 ? alpha : -32001;
+        int best = pvnode ? alpha : -32001;
         int asave = alpha;
-        int first = 1;
+        boolean first = true;
         int[] moveList = board.getMoveList(ply);
         for (int n = 1; n <= ((ch != 0L) ? 2 : 3); n++) {
             if (n == 1) {
@@ -237,27 +220,27 @@ public class Engine {
 
                 nch = attackingPieces(board.kingPosition(oc), oc, board);
                 if (nch != 0) ext++; // Check Extension
-                else if (d >= 3 && n == 3 && pvnode == 0) { //LMR
+                else if (d >= 3 && n == 3 && !pvnode) { //LMR
                     if (m == killer[ply]) ; //Don't reduce killers
                     else if (Move.piece(m) == PAWN && (PAWN_FREE[c][Move.to(m)] & board.get(PAWN) & board.get(oc)) == 0); //Don't reduce free pawns
                     else ext--;
                 }
 
-                if (first != 0 && pvnode != 0) {
-                    w = -search(nch, oc, d - 1 + ext, ply + 1, -beta, -alpha, 1, 1);
+                if (first && pvnode) {
+                    w = -search(nch, oc, d - 1 + ext, ply + 1, -beta, -alpha, true, true);
                     if (ply == 0) noabort = (iter > 1 && w < value[iter - 1] - 40);
                 } else {
-                    w = -search(nch, oc, d - 1 + ext, ply + 1, -alpha - 1, -alpha, 0, 1);
+                    w = -search(nch, oc, d - 1 + ext, ply + 1, -alpha - 1, -alpha, false, true);
                     if (w > alpha && ext < 0)
-                        w = -search(nch, oc, d - 1, ply + 1, -alpha - 1, -alpha, 0, 1);
-                    if (w > alpha && w < beta && pvnode != 0)
-                        w = -search(nch, oc, d - 1 + ext, ply + 1, -beta, -alpha, 1, 1);
+                        w = -search(nch, oc, d - 1, ply + 1, -alpha - 1, -alpha, false, true);
+                    if (w > alpha && w < beta && pvnode)
+                        w = -search(nch, oc, d - 1 + ext, ply + 1, -beta, -alpha, true, true);
                 }
                 board.undoMove(m);
 
                 if (!sabort && w > best) {
                     if (w > alpha) {
-                        hashDP[(int) (hp & HMASKP)] = (hp & HINVP) | m;
+                        hashDp.put(hp, m);
                         alpha = w;
                     }
                     if (w >= beta) {
@@ -265,10 +248,10 @@ public class Engine {
                             killer[ply] = m;
                             history[m & 0xFFF]++;
                         }
-                        hashDB[(int) (hb & HMASKB)] = (hb & HINVB) | (w + 32768);
+                        hashDb.put(hb, w + 32768);
                         return beta;
                     }
-                    if (pvnode != 0 && w >= alpha) {
+                    if (pvnode && w >= alpha) {
                         pv[ply][ply] = m;
                         System.arraycopy(pv[ply + 1], ply + 1, pv[ply], ply + 1, pvlength[ply + 1] - (ply + 1));
                         pvlength[ply] = pvlength[ply + 1];
@@ -277,14 +260,14 @@ public class Engine {
                     }
                     best = w;
                 }
-                first = 0;
+                first = false;
             }
         }
-        if (first != 0) return (ch != 0L) ? -32000 + ply : 0;
-        if (pvnode != 0) {
-            if (!sabort && asave == alpha) hashDB[(int) (hb & HMASKB)] = (hb & HINVB) | 0x10000 | (asave + 32768);
+        if (first) return (ch != 0L) ? -32000 + ply : 0;
+        if (pvnode) {
+            if (!sabort && asave == alpha) hashDb.put(hb, 0x10000 | (asave + 32768));
         } else {
-            if (!sabort && best < beta) hashDB[(int) (hb & HMASKB)] = (hb & HINVB) | 0x10000 | (best + 32768);
+            if (!sabort && best < beta) hashDb.put(hb, 0x10000 | (best + 32768));
         }
         return alpha;
     }
@@ -309,10 +292,9 @@ public class Engine {
 
     /* In normal search some basic move ordering heuristics are used */
     private int spick(int[] ml, int s, int ply) {
-        int m;
-        int i, pi = 0, vmax = -9999;
-        for (i = s; i < ml[0]; i++) {
-            m = ml[i];
+        int pi = 0, vmax = -9999;
+        for (int i = s; i < ml[0]; i++) {
+            int m = ml[i];
             if (m == killer[ply]) {
                 pi = i;
                 break;
@@ -322,24 +304,23 @@ public class Engine {
                 pi = i;
             }
         }
-        m = ml[pi];
+        int m = ml[pi];
         if (pi != s) ml[pi] = ml[s];
         return m;
     }
 
     /* In quiesce the moves are ordered just for the value of the captured piece */
     private int qpick(int[] ml, int s) {
-        int m;
-        int i, t, pi = 0, vmax = -9999;
-        for (i = s; i < ml[0]; i++) {
-            m = ml[i];
-            t = Board.MATERIAL[Move.capture(m)];
+        int pi = 0, vmax = -9999;
+        for (int i = s; i < ml[0]; i++) {
+            int m = ml[i];
+            int t = Board.MATERIAL[Move.capture(m)];
             if (t > vmax) {
                 vmax = t;
                 pi = i;
             }
         }
-        m = ml[pi];
+        int m = ml[pi];
         if (pi != s) ml[pi] = ml[s];
         return m;
     }
