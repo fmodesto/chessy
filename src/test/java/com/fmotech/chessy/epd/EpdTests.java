@@ -22,13 +22,13 @@ import static org.junit.Assert.assertEquals;
 @RunWith(Parameterized.class)
 public class EpdTests {
 
-    public static final int TIME = 5;
-    public static final int EXECUTE = -1;
+    public static final int TIME = 30;
+    public static final int EXECUTE = 69;
     private final EpdReader.Epd epd;
 
     @Parameters
     public static List<Object[]> data() {
-        List<Object[]> tests = EpdReader.read(Paths.get("src/test/resources/wacnew.epd"))
+        List<Object[]> tests = EpdReader.read(Paths.get("src/test/resources/eigenmann.epd"))
                 .map(e -> new Object[]{e})
                 .collect(Collectors.toList());
         return EXECUTE < 0 ? tests : Collections.singletonList(tests.get(EXECUTE));
@@ -60,9 +60,9 @@ public class EpdTests {
     private String think(String fen, int time) {
         Engine engine = new Engine(Board.load(fen));
         String calc = engine.calc(time, 64);
-//        System.out.println("Mine: " + calc);
-//        String calc = OliUtils.think(fen, time, 64);
-//        System.out.println("Oli: " + oli);
+        System.out.println("Mine: " + calc);
+        String oli = OliUtils.think(fen, time, 64);
+        System.out.println("Oli: " + oli);
 //        for (int i = 0; i < Math.min(OliThink.hashes.size(), Engine.hashes.size()); i++) {
 //            if (OliThink.hashes.get(i) != (long) Engine.hashes.get(i)) {
 //                System.err.println("FAILURE AT " + i);

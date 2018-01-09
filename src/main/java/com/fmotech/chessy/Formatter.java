@@ -21,7 +21,7 @@ public class Formatter {
         int start = 0;
         int end = move.length() - 1;
         int piece = Character.isUpperCase(move.charAt(start)) ? SYMBOLS.indexOf(move.charAt(start++)) : PAWN;
-        int promotion = Character.isDigit(move.charAt(end)) ? 0 : SYMBOLS.charAt(end--);
+        int promotion = Character.isDigit(move.charAt(end)) ? 0 : SYMBOLS.indexOf(move.charAt(end--));
         int to = (move.charAt(end--) - '1') * 8 + (move.charAt(end--) - 'a');
         long target = 0;
         for (int i = start; i <= end; i++) {

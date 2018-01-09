@@ -29,7 +29,6 @@ public class Engine {
     private int[] pvlength = new int[64];
 
     private long[] hstack = new long[0x800];
-    private long[] mstack = new long[0x800];
 
     private int[] killer = new int[128];
     private int[] history = new int[0x1000];
@@ -42,8 +41,8 @@ public class Engine {
     private long nodes = 0;
     private long qnodes = 0;
 
-    long searchtime, maxtime, starttime;
-    boolean sabort, noabort;
+    long searchtime, starttime;
+    boolean sabort;
     private See see = new See();
 
     public Engine(Board board) {
@@ -60,12 +59,10 @@ public class Engine {
         qnodes = nodes = 0L;
 
         searchtime = time;
-        maxtime = time;
 
         starttime = System.currentTimeMillis();
 
         for (iter = 1; iter <= depth; iter++) {
-            noabort = false;
             value[iter] = search(ch, board.sideToMove(), iter, 0, -32000, 32000, true, false);
             t1 = (int)(System.currentTimeMillis() - starttime);
             if (sabort && pvlength[0] == 0 && (iter--) != 0) break;
@@ -108,7 +105,7 @@ public class Engine {
         } while(false);
 
         long pin = pinnedPieces(board.kingPosition(c), c, board);
-        int[] moveList = MoveGenerator.generate(ch, pin, c, ply, true, false, true, board);
+        int[] moveList = MoveGenerator.generate(ch, pin, c, ply, true, false, false, board);
         if (ch != 0 && moveList[0] == 1) return -32000 + ply;
 
         for (i = 1; i < moveList[0]; i++) {
@@ -147,7 +144,7 @@ public class Engine {
         if (ply == 63) return evaluation.evaluate(board, c) + w;
         if ((++nodes & CNODES) == 0) {
             long consumed = System.currentTimeMillis() - starttime;
-            if ((consumed > maxtime || (consumed > searchtime && !noabort))) sabort = true;
+            if (consumed > searchtime) sabort = true;
         }
         if (sabort) return 0;
 
@@ -228,7 +225,6 @@ public class Engine {
 
                 if (first && pvnode) {
                     w = -search(nch, oc, d - 1 + ext, ply + 1, -beta, -alpha, true, true);
-                    if (ply == 0) noabort = (iter > 1 && w < value[iter - 1] - 40);
                 } else {
                     w = -search(nch, oc, d - 1 + ext, ply + 1, -alpha - 1, -alpha, false, true);
                     if (w > alpha && ext < 0)
@@ -255,7 +251,6 @@ public class Engine {
                         pv[ply][ply] = m;
                         System.arraycopy(pv[ply + 1], ply + 1, pv[ply], ply + 1, pvlength[ply + 1] - (ply + 1));
                         pvlength[ply] = pvlength[ply + 1];
-                        if (ply == 0 && iter > 1 && w > value[iter - 1] - 20) noabort = false;
                         if (w == 31999 - ply) return w;
                     }
                     best = w;
