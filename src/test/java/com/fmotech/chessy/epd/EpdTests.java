@@ -22,13 +22,13 @@ import static org.junit.Assert.assertEquals;
 @RunWith(Parameterized.class)
 public class EpdTests {
 
-    public static final int TIME = 30;
+    public static final int TIME = 10;
     public static final int EXECUTE = -1;
     private final EpdReader.Epd epd;
 
     @Parameters
     public static List<Object[]> data() {
-        List<Object[]> tests = EpdReader.read(Paths.get("src/test/resources/eigenmann.epd"))
+        List<Object[]> tests = EpdReader.read(Paths.get("src/test/resources/wacnew.epd"))
                 .map(e -> new Object[]{e})
                 .collect(Collectors.toList());
         return EXECUTE < 0 ? tests : Collections.singletonList(tests.get(EXECUTE));

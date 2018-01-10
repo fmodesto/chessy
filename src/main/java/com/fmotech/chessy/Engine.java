@@ -19,15 +19,15 @@ public class Engine {
 
     private static final int nullvar[] = new int[]{13, 43, 149, 519, 1809, 6311, 22027};
 
-    private static final int CNODES = 0xFFFF;
+    private static final int CHECK_NODES = 0xFFFF;
 
-    private BoardTable hashDb = new BoardTable(0x200000);
-    private BoardTable hashDp = new BoardTable(0x400000);
+    private BoardTable scoreTable = new BoardTable(0x200000);
+    private BoardTable moveTable = new BoardTable(0x400000);
 
     private int[][] pv = new int[64][64];
     private int[] pvlength = new int[64];
 
-    private long[] hstack = new long[0x800];
+    private long[] boardStack = new long[0x800];
 
     private int[] killer = new int[128];
     private int[] history = new int[0x1000];
@@ -41,7 +41,7 @@ public class Engine {
     private long qnodes = 0;
 
     long searchtime, starttime;
-    boolean sabort;
+    boolean abort;
     private See see = new See();
 
     public Engine(Board board) {
@@ -54,7 +54,7 @@ public class Engine {
         time *= 1000;
 
         iter = value[0] = 0;
-        sabort = false;
+        abort = false;
         qnodes = nodes = 0L;
 
         searchtime = time;
@@ -64,11 +64,11 @@ public class Engine {
         for (iter = 1; iter <= depth; iter++) {
             value[iter] = search(ch, board.sideToMove(), iter, 0, -32000, 32000, true, false);
             t1 = (int)(System.currentTimeMillis() - starttime);
-            if (sabort && pvlength[0] == 0 && (iter--) != 0) break;
+            if (abort && pvlength[0] == 0 && (iter--) != 0) break;
             if (pvlength[0] > 0) {
                 System.out.printf("%2d %5d %6d %9d  %s\n", iter, value[iter], t1, (int)(nodes + qnodes), displaypv());
             }
-            if ((iter >= 32000-value[iter] || sabort || t1 > searchtime/2)) break;
+            if ((iter >= 32000-value[iter] || abort || t1 > searchtime/2)) break;
         }
         System.out.printf("move %s\n", Formatter.moveToFen(pv[0][0]));
 
@@ -137,29 +137,29 @@ public class Engine {
         return hashes.add(board.hash());
     }
 
-    private int search(long ch, int c, int d, int ply, int alpha, int beta, boolean pvnode, boolean allowNullMoves) {
+    private int search(long ch, int c, int d, int ply, int alpha, int beta, boolean pvNode, boolean allowNullMoves) {
 //        check();
         int oc = OTHER(c);
         int w = board.material(c) - board.material(oc);
 
         pvlength[ply] = ply;
         if (ply == 63) return evaluation.evaluate(board, c) + w;
-        if ((++nodes & CNODES) == 0) {
+        if ((++nodes & CHECK_NODES) == 0) {
             long consumed = System.currentTimeMillis() - starttime;
-            if (consumed > searchtime) sabort = true;
+            if (consumed > searchtime) abort = true;
         }
-        if (sabort) return 0;
+        if (abort) return 0;
 
-        long hp = board.hash(c);
-        if (ply != 0 && isDraw(hp, 1) != 0) return 0;
+        long moveHash = board.hash(c);
+        if (ply != 0 && isDraw(moveHash, 1) != 0) return 0;
 
         if (d == 0) return quiesce(ch, c, ply, alpha, beta);
-        hstack[board.ply()] = hp;
+        boardStack[board.ply()] = moveHash;
 
-        long hb = board.hash(c, d);
-        if (hashDb.containsKey(hb)) {
-            w = (hashDb.get(hb) & 0xFFFF) - 32768;
-            if ((hashDb.get(hb) & 0x10000) != 0) {
+        long scoreHash = board.hash(c, d);
+        if (scoreTable.containsKey(scoreHash)) {
+            w = (scoreTable.get(scoreHash) & 0xFFFF) - 32768;
+            if ((scoreTable.get(scoreHash) & 0x10000) != 0) {
                 allowNullMoves = false;
                 if (w <= alpha) return alpha;
             } else {
@@ -168,31 +168,29 @@ public class Engine {
         }
 
         long pin = pinnedPieces(board.kingPosition(c), c, board);
-        if (!pvnode && ch == 0 && allowNullMoves && d > 1 && bitCount(board.get(c) & ~board.get(PAWN) & ~pin) > 2) {
+        if (!pvNode && ch == 0 && allowNullMoves && d > 1 && bitCount(board.get(c) & ~board.get(PAWN) & ~pin) > 2) {
             int R = (10 + d + nullVariance(w - beta)) / 4;
             if (R > d) R = d;
             board.doNullMove();
             w = -search(0L, oc, d - R, ply + 1, -beta, -alpha, false, false); //Null Move Search
             board.undoNullMove();
-            if (!sabort && w >= beta) {
-                hashDb.put(hb, w + 32768);
+            if (!abort && w >= beta) {
+                scoreTable.put(scoreHash, w + 32768);
                 return beta;
             }
         }
 
         int hmove = 0;
         if (ply > 0) {
-            hmove = hashDp.get(hp);
+            hmove = moveTable.get(moveHash);
             if (d >= 4 && hmove == 0) { // Simple version of Internal Iterative Deepening
-                search(ch, c, d - 3, ply, alpha, beta, pvnode, false);
-                hmove = hashDp.get(hp);
+                search(ch, c, d - 3, ply, alpha, beta, pvNode, false);
+                hmove = moveTable.get(moveHash);
             }
         } else {
             hmove = retPVMove(c, ply, ch, pin);
         }
 
-        int best = pvnode ? alpha : -32001;
-        int asave = alpha;
         boolean first = true;
         int[] moveList = board.getMoveList(ply);
         for (int n = 1; n <= ((ch != 0L) ? 2 : 3); n++) {
@@ -219,53 +217,46 @@ public class Engine {
 
                 nch = attackingPieces(board.kingPosition(oc), oc, board);
                 if (nch != 0) ext++; // Check Extension
-                else if (d >= 3 && n == 3 && !pvnode) { //LMR
+                else if (d >= 3 && n == 3 && !pvNode) { //LMR
                     if (m == killer[ply]) ; //Don't reduce killers
                     else if (Move.piece(m) == PAWN && (PAWN_FREE[c][Move.to(m)] & board.get(PAWN) & board.get(oc)) == 0); //Don't reduce free pawns
                     else ext--;
                 }
 
-                if (first && pvnode) {
+                if (first && pvNode) {
                     w = -search(nch, oc, d - 1 + ext, ply + 1, -beta, -alpha, true, true);
                 } else {
                     w = -search(nch, oc, d - 1 + ext, ply + 1, -alpha - 1, -alpha, false, true);
                     if (w > alpha && ext < 0)
                         w = -search(nch, oc, d - 1, ply + 1, -alpha - 1, -alpha, false, true);
-                    if (w > alpha && w < beta && pvnode)
+                    if (w > alpha && w < beta && pvNode)
                         w = -search(nch, oc, d - 1 + ext, ply + 1, -beta, -alpha, true, true);
                 }
                 board.undoMove(m);
 
-                if (!sabort && w > best) {
-                    if (w > alpha) {
-                        hashDp.put(hp, m);
-                        alpha = w;
-                    }
+                if (!abort && w > alpha) {
+                    moveTable.put(moveHash, m);
+                    alpha = w;
                     if (w >= beta) {
                         if (Move.capture(m) == 0) {
                             killer[ply] = m;
                             history[m & 0xFFF]++;
                         }
-                        hashDb.put(hb, w + 32768);
+                        scoreTable.put(scoreHash, w + 32768); // beta cutoff
                         return beta;
                     }
-                    if (pvnode && w >= alpha) {
+                    if (pvNode) {
                         pv[ply][ply] = m;
                         System.arraycopy(pv[ply + 1], ply + 1, pv[ply], ply + 1, pvlength[ply + 1] - (ply + 1));
                         pvlength[ply] = pvlength[ply + 1];
                         if (w == 31999 - ply) return w;
                     }
-                    best = w;
                 }
                 first = false;
             }
         }
         if (first) return (ch != 0L) ? -32000 + ply : 0;
-        if (pvnode) {
-            if (!sabort && asave == alpha) hashDb.put(hb, 0x10000 | (asave + 32768));
-        } else {
-            if (!sabort && best < beta) hashDb.put(hb, 0x10000 | (best + 32768));
-        }
+        if (!abort) scoreTable.put(scoreHash, 0x10000 | (alpha + 32768)); // Alpha cutoff
         return alpha;
     }
 
@@ -328,7 +319,7 @@ public class Engine {
             int c = 0, n = board.ply() - board.fifty();
             if (board.fifty() >= 100) return 2; //100 plies
             for (int i = board.ply() - 2; i >= n; i--)
-                if (hstack[i] == hp && ++c == nrep) return 1;
+                if (boardStack[i] == hp && ++c == nrep) return 1;
         } else if ((board.get(PAWN) | board.get(ROOK) | board.get(QUEEN)) == 0) { //Check for mating material
             if (sparseBitCount(board.get(WHITE)) <= 2 && sparseBitCount(board.get(BLACK)) <= 2) return 3;
         }
