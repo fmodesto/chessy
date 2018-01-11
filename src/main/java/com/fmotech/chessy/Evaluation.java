@@ -28,6 +28,8 @@ import static com.fmotech.chessy.KoggeStone.shiftOne;
 import static com.fmotech.chessy.MoveGenerator.pinnedPieces;
 import static com.fmotech.chessy.MoveTables.DIR;
 import static com.fmotech.chessy.MoveTables.MASK;
+import static com.fmotech.chessy.MoveTables.bishopRay;
+import static com.fmotech.chessy.MoveTables.rookRay;
 import static com.fmotech.chessy.Utils.BIT;
 import static com.fmotech.chessy.Utils.RANK;
 import static com.fmotech.chessy.Utils.TEST;
@@ -116,7 +118,7 @@ public class Evaluation {
         while (next != 0) {
             pieceValue += 4;
             int from = lowestBitPosition(next);
-            long attack = MoveGenerator.queenMove(from, pieces);
+            long attack = rookRay(from, pieces) | bishopRay(from, pieces);
             if ((attack & kingSurrounds) != 0) kingAttack += sparseBitCount(attack & kingSurrounds) << 4;
             mobility += TEST(from, pin) ? bitCount(attack & MASK(from, king)) : bitCount(attack);
             next = nextLowestBit(next);
@@ -127,7 +129,7 @@ public class Evaluation {
         while (next != 0) {
             pieceValue += 1;
             int from = lowestBitPosition(next);
-            long attack = MoveGenerator.bishopMove(from, pieces);
+            long attack = bishopRay(from, pieces);
             if ((attack & kingSurrounds) != 0) kingAttack += sparseBitCount(attack & kingSurrounds) << 4;
             mobility += TEST(from, pin) ? bitCount(attack & MASK(from, king)) : bitCount(attack) << 3;
             next = nextLowestBit(next);
@@ -139,7 +141,7 @@ public class Evaluation {
         while (next != 0) {
             pieceValue += 2;
             int from = lowestBitPosition(next);
-            long attack = MoveGenerator.rookMove(from, pieces);
+            long attack = rookRay(from, pieces);
             if ((attack & kingSurrounds) != 0) kingAttack += sparseBitCount(attack & kingSurrounds) << 4;
             mobility += TEST(from, pin) ? bitCount(attack & MASK(from, king)) : bitCount(attack) << 2;
             next = nextLowestBit(next);

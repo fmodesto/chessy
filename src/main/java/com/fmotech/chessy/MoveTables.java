@@ -3,7 +3,7 @@ package com.fmotech.chessy;
 import java.util.function.BiFunction;
 
 import static com.fmotech.chessy.BitOperations.bitCount;
-import static com.fmotech.chessy.BitOperations.lowestBit;
+import static com.fmotech.chessy.BitOperations.permutateBoard;
 import static com.fmotech.chessy.KoggeStone.E;
 import static com.fmotech.chessy.KoggeStone.N;
 import static com.fmotech.chessy.KoggeStone.NE;
@@ -19,15 +19,15 @@ import static java.util.stream.IntStream.range;
 
 public class MoveTables {
 
-    public static long RXRAY1(int pos, long occupied) { return RAYS[((pos) << 7) | key000(occupied, pos) | 0x8000]; }
-    public static long RXRAY2(int pos, long occupied) { return RAYS[((pos) << 7) | key090(occupied, pos) | 0xA000]; }
-    public static long BXRAY3(int pos, long occupied) { return RAYS[((pos) << 7) | key045(occupied, pos) | 0xC000]; }
-    public static long BXRAY4(int pos, long occupied) { return RAYS[((pos) << 7) | key135(occupied, pos) | 0xE000]; }
+    private static long RXRAY1(int pos, long occupied) { return RAYS[((pos) << 7) | key000(occupied, pos) | 0x8000]; }
+    private static long RXRAY2(int pos, long occupied) { return RAYS[((pos) << 7) | key090(occupied, pos) | 0xA000]; }
+    private static long BXRAY3(int pos, long occupied) { return RAYS[((pos) << 7) | key045(occupied, pos) | 0xC000]; }
+    private static long BXRAY4(int pos, long occupied) { return RAYS[((pos) << 7) | key135(occupied, pos) | 0xE000]; }
 
     public static long RATT1(int pos, long occupied) { return RAYS[((pos) << 7) | key000(occupied, pos)]; }
     public static long RATT2(int pos, long occupied) { return RAYS[((pos) << 7) | key090(occupied, pos) | 0x2000]; }
-    public static long BATT3(int pos, long occupied) { return RAYS[((pos) << 7) | key045(occupied, pos) | 0x4000]; }
-    public static long BATT4(int pos, long occupied) { return RAYS[((pos) << 7) | key135(occupied, pos) | 0x6000]; }
+    private static long BATT3(int pos, long occupied) { return RAYS[((pos) << 7) | key045(occupied, pos) | 0x4000]; }
+    private static long BATT4(int pos, long occupied) { return RAYS[((pos) << 7) | key135(occupied, pos) | 0x6000]; }
 
     public static int DIR(int from, int to) {
         if (((from ^ to) & 56) == 0) return 1;
@@ -72,7 +72,7 @@ public class MoveTables {
                 long bitBoard = permutateBoard(numBits, i, permutationMask);
                 long ray = slide(bit, bitBoard, dir1) | slide(bit, bitBoard, dir2);
                 long xrayBoard = bitBoard & ~ray;
-                long xray = (slide(bit, xrayBoard, dir1) | slide(bit, xrayBoard, dir2)) & xrayBoard;
+                long xray = (slide(bit, xrayBoard, dir1) | slide(bit, xrayBoard, dir2)) & ~ray;
                 int index = key.apply(bitBoard, pos);
                 rays[(pos << 7) + index + offset] = ray;
                 rays[(pos << 7) + index + 0x8000 + offset] = xray;
@@ -82,17 +82,6 @@ public class MoveTables {
 
     private static long createPermutationMask(long bit, int dir1, int dir2) {
         return slide(bit, 0, dir1) | slide(bit, 0, dir2) | bit;
-    }
-
-    static long permutateBoard(int numBits, int permutationMask, long allSetBoard) {
-        long permutation = allSetBoard;
-        for (int i = 0; i < numBits; i++) {
-            long bit = lowestBit(allSetBoard);
-            if (((1 << i) & permutationMask) == 0)
-                permutation ^= bit;
-            allSetBoard ^= bit;
-        }
-        return permutation;
     }
 
     private static int key000(long bitBoard, int pos) {
@@ -118,5 +107,21 @@ public class MoveTables {
     private static int keyDiagonal(long bitBoard) {
         bitBoard *= 0x0202020202020202L;
         return (int) (bitBoard >>> 57);
+    }
+
+    public static long rookRay(int position, long bitBoard) {
+        return RATT1(position, bitBoard) | RATT2(position, bitBoard);
+    }
+
+    public static long rookXRay(int position, long bitBoard) {
+        return RXRAY1(position, bitBoard) | RXRAY2(position, bitBoard);
+    }
+
+    public static long bishopRay(int position, long bitBoard) {
+        return BATT3(position, bitBoard) | BATT4(position, bitBoard);
+    }
+
+    public static long bishopXRay(int position, long bitBoard) {
+        return BXRAY3(position, bitBoard) | BXRAY4(position, bitBoard);
     }
 }

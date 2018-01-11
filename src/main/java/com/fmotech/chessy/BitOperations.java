@@ -64,4 +64,15 @@ public class BitOperations {
     public static long fileFill(long n) {
         return 0x0101010101010101L * (southFill(n) & 0xFFL);
     }
+
+    public static long permutateBoard(int numBits, int permutationMask, long allSetBoard) {
+        long permutation = allSetBoard;
+        for (int i = 0; i < numBits; i++) {
+            long bit = lowestBit(allSetBoard);
+            if (((1 << i) & permutationMask) == 0)
+                permutation ^= bit;
+            allSetBoard ^= bit;
+        }
+        return permutation;
+    }
 }

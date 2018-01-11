@@ -15,16 +15,12 @@ import static com.fmotech.chessy.Board.PAWN;
 import static com.fmotech.chessy.Board.QUEEN;
 import static com.fmotech.chessy.Board.ROOK;
 import static com.fmotech.chessy.Board.WHITE;
-import static com.fmotech.chessy.MoveTables.BATT3;
-import static com.fmotech.chessy.MoveTables.BATT4;
-import static com.fmotech.chessy.MoveTables.BXRAY3;
-import static com.fmotech.chessy.MoveTables.BXRAY4;
-import static com.fmotech.chessy.MoveTables.DIR;
-import static com.fmotech.chessy.MoveTables.MASK;
-import static com.fmotech.chessy.MoveTables.RATT1;
-import static com.fmotech.chessy.MoveTables.RATT2;
-import static com.fmotech.chessy.MoveTables.RXRAY1;
-import static com.fmotech.chessy.MoveTables.RXRAY2;
+import static com.fmotech.chessy.MagicBitboard.SEGMENT;
+import static com.fmotech.chessy.MagicBitboard.MASK;
+import static com.fmotech.chessy.MagicBitboard.bishopRay;
+import static com.fmotech.chessy.MagicBitboard.bishopXRay;
+import static com.fmotech.chessy.MagicBitboard.rookRay;
+import static com.fmotech.chessy.MagicBitboard.rookXRay;
 import static com.fmotech.chessy.Utils.BIT;
 import static com.fmotech.chessy.Utils.OTHER;
 import static com.fmotech.chessy.Utils.RANK;
@@ -121,7 +117,7 @@ public class MoveGenerator {
         int king = board.kingPosition(sideToMove);
         if ((check & (MoveTables.KNIGHT[king] | MoveTables.KING[king])) != 0) return; // Can't block
 
-        long segment = getSegment(king, target, pieces);
+        long segment = SEGMENT(king, target, pieces);
         while (segment != 0) {
             int to = lowestBitPosition(segment);
             long blockers = reach(to, sideToMove, board) & ~pin;
@@ -143,14 +139,6 @@ public class MoveGenerator {
             }
             segment = nextLowestBit(segment);
         }
-    }
-
-    private static long getSegment(int from, int to, long pieces) {
-        int dir = DIR(from, to);
-        if (dir == 1) return RATT1(from, pieces) & RATT1(to, pieces) & ~pieces;
-        else if (dir == 2) return RATT2(from, pieces) & RATT2(to, pieces) & ~pieces;
-        else if (dir == 3) return BATT3(from, pieces) & BATT3(to, pieces) & ~pieces;
-        else return BATT4(from, pieces) & BATT4(to, pieces) & ~pieces;
     }
 
     private static void generateKingMoves(int[] moves, int sideToMove, long mask, IBoard board) {
@@ -209,7 +197,7 @@ public class MoveGenerator {
         while (next != 0) {
             int from = lowestBitPosition(next);
             long mask = TEST(from, pin) ? MASK(from, king) : -1;
-            long target = bishopMove(from, pieces) & ~pieces & mask;
+            long target = bishopRay(from, pieces) & ~pieces & mask;
             registerMoves(moves, sideToMove, from, BISHOP, target);
             next = nextLowestBit(next);
         }
@@ -218,24 +206,24 @@ public class MoveGenerator {
         while (next != 0) {
             int from = lowestBitPosition(next);
             long mask = TEST(from, pin) ? MASK(from, king) : -1;
-            long target = rookMove(from, pieces) & ~pieces & mask;
+            long target = rookRay(from, pieces) & ~pieces & mask;
             registerMoves(moves, sideToMove, from, ROOK, target);
             if (board.castle() != 0) {
                 if (sideToMove == BLACK) {
-                    if ((board.castle() & 128) != 0 && (from == 63) && (RATT1(63, pieces) & BIT(60)) != 0
+                    if ((board.castle() & 128) != 0 && (from == 63) && (rookRay(63, pieces) & BIT(60)) != 0
                             && !(positionAttacked(61, sideToMove, board) | positionAttacked(62, sideToMove, board))) {
                         moves[moves[0]++] = Move.create(60, 62, KING, 0, 0, sideToMove);
                     }
-                    if ((board.castle() & 512) != 0 && (from == 56) && (RATT1(56, pieces) & BIT(60)) != 0
+                    if ((board.castle() & 512) != 0 && (from == 56) && (rookRay(56, pieces) & BIT(60)) != 0
                             && !(positionAttacked(59, sideToMove, board) | positionAttacked(58, sideToMove, board))) {
                         moves[moves[0]++] = Move.create(60, 58, KING, 0, 0, sideToMove);
                     }
                 } else {
-                    if ((board.castle() & 64) != 0 && (from == 7) && (RATT1(7, pieces) & BIT(4)) != 0
+                    if ((board.castle() & 64) != 0 && (from == 7) && (rookRay(7, pieces) & BIT(4)) != 0
                             && !(positionAttacked(5, sideToMove, board) | positionAttacked(6, sideToMove, board))) {
                         moves[moves[0]++] = Move.create(4, 6, KING, 0, 0, sideToMove);
                     }
-                    if ((board.castle() & 256) != 0 && (from == 0) && (RATT1(0, pieces) & BIT(4)) != 0
+                    if ((board.castle() & 256) != 0 && (from == 0) && (rookRay(0, pieces) & BIT(4)) != 0
                             && !(positionAttacked(3, sideToMove, board) | positionAttacked(2, sideToMove, board))) {
                         moves[moves[0]++] = Move.create(4, 2, KING, 0, 0, sideToMove);
                     }
@@ -248,7 +236,7 @@ public class MoveGenerator {
         while (next != 0) {
             int from = lowestBitPosition(next);
             long mask = TEST(from, pin) ? MASK(from, king) : -1;
-            long target = queenMove(from, pieces) & ~pieces & mask;
+            long target = (rookRay(from, pieces) | bishopRay(from, pieces)) & ~pieces & mask;
             registerMoves(moves, sideToMove, from, QUEEN, target);
             next = nextLowestBit(next);
         }
@@ -269,7 +257,7 @@ public class MoveGenerator {
             long mask = TEST(from, pin) ? MASK(from, king) : -1;
             long target = MoveTables.PAWN_ATTACK[sideToMove][from] & (enPassant | enemy) & mask;
             if ((target & enPassant) != 0) {
-                long ray = RATT1(from, pieces ^ board.enPassantPawn(sideToMove));
+                long ray = rookRay(from, pieces ^ board.enPassantPawn(sideToMove)) & (sideToMove == WHITE ? 0x000000ff00000000L : 0x00000000ff000000L);
                 if (TEST(king, ray) && (ray & (board.get(ROOK) | board.get(QUEEN)) & enemy) != 0) {
                     target ^= enPassant;
                 }
@@ -299,7 +287,7 @@ public class MoveGenerator {
         while (next != 0) {
             int from = lowestBitPosition(next);
             long mask = TEST(from, pin) ? MASK(from, king) : -1;
-            long target = bishopMove(from, pieces) & enemy & mask;
+            long target = bishopRay(from, pieces) & enemy & mask;
             registerAttackMoves(moves, sideToMove, from, BISHOP, target, 0, board);
             next = nextLowestBit(next);
         }
@@ -308,7 +296,7 @@ public class MoveGenerator {
         while (next != 0) {
             int from = lowestBitPosition(next);
             long mask = TEST(from, pin) ? MASK(from, king) : -1;
-            long target = rookMove(from, pieces) & enemy & mask;
+            long target = rookRay(from, pieces) & enemy & mask;
             registerAttackMoves(moves, sideToMove, from, ROOK, target, 0, board);
             next = nextLowestBit(next);
         }
@@ -317,7 +305,7 @@ public class MoveGenerator {
         while (next != 0) {
             int from = lowestBitPosition(next);
             long mask = TEST(from, pin) ? MASK(from, king) : -1;
-            long target = queenMove(from, pieces) & enemy & mask;
+            long target = (rookRay(from, pieces) | bishopRay(from, pieces)) & enemy & mask;
             registerAttackMoves(moves, sideToMove, from, QUEEN, target, 0, board);
             next = nextLowestBit(next);
         }
@@ -364,10 +352,8 @@ public class MoveGenerator {
         if ((MoveTables.PAWN_ATTACK[sideToMove][position] & enemy & board.get(PAWN)) != 0) return true;
         if ((MoveTables.KNIGHT[position] & enemy & board.get(KNIGHT)) != 0) return true;
         if ((MoveTables.KING[position] & enemy & board.get(KING)) != 0) return true;
-        if ((RATT1(position, pieces) & enemy & (board.get(ROOK) | board.get(QUEEN))) != 0) return true;
-        if ((RATT2(position, pieces) & enemy & (board.get(ROOK) | board.get(QUEEN))) != 0) return true;
-        if ((BATT3(position, pieces) & enemy & (board.get(BISHOP) | board.get(QUEEN))) != 0) return true;
-        if ((BATT4(position, pieces) & enemy & (board.get(BISHOP) | board.get(QUEEN))) != 0) return true;
+        if ((rookRay(position, pieces) & enemy & (board.get(ROOK) | board.get(QUEEN))) != 0) return true;
+        if ((bishopRay(position, pieces) & enemy & (board.get(BISHOP) | board.get(QUEEN))) != 0) return true;
         return false;
     }
 
@@ -376,16 +362,16 @@ public class MoveGenerator {
         long pieces = board.get(sideToMove) | enemy;
         return MoveTables.PAWN_ATTACK[sideToMove][position] & board.get(PAWN) & enemy
                 | MoveTables.KNIGHT[position] & board.get(KNIGHT) & enemy
-                | rookMove(position, pieces) & (board.get(ROOK) | board.get(QUEEN)) & enemy
-                | bishopMove(position, pieces) & (board.get(BISHOP) | board.get(QUEEN)) & enemy;
+                | rookRay(position, pieces) & (board.get(ROOK) | board.get(QUEEN)) & enemy
+                | bishopRay(position, pieces) & (board.get(BISHOP) | board.get(QUEEN)) & enemy;
     }
 
     private static long reach(int position, int sideToMove, IBoard board) {
         long own = board.get(sideToMove);
         long pieces = board.get(OTHER(sideToMove)) | own;
         return MoveTables.KNIGHT[position] & board.get(KNIGHT) & own
-                | rookMove(position, pieces) & (board.get(ROOK) | board.get(QUEEN)) & own
-                | bishopMove(position, pieces) & (board.get(BISHOP) | board.get(QUEEN)) & own;
+                | rookRay(position, pieces) & (board.get(ROOK) | board.get(QUEEN)) & own
+                | bishopRay(position, pieces) & (board.get(BISHOP) | board.get(QUEEN)) & own;
     }
 
     public static long pinnedPieces(int position, int sideToMove, IBoard board) {
@@ -396,42 +382,18 @@ public class MoveGenerator {
         long rookQueen = board.get(ROOK) | board.get(QUEEN);
         long bishopQueen = board.get(BISHOP) | board.get(QUEEN);
 
-        long next = RXRAY1(position, pieces) & rookQueen & enemy;
+        long next = rookXRay(position, pieces) & rookQueen & enemy;
         while (next != 0) {
             int pinner = lowestBitPosition(next);
-            pin |= RATT1(pinner, pieces) & RATT1(position, pieces) & own;
+            pin |= rookRay(pinner, pieces) & rookRay(position, pieces) & own;
             next = nextLowestBit(next);
         }
-        next = RXRAY2(position, pieces) & rookQueen & enemy;
+        next = bishopXRay(position, pieces) & bishopQueen & enemy;
         while (next != 0) {
             int pinner = lowestBitPosition(next);
-            pin |= RATT2(pinner, pieces) & RATT2(position, pieces) & own;
-            next = nextLowestBit(next);
-        }
-        next = BXRAY3(position, pieces) & bishopQueen & enemy;
-        while (next != 0) {
-            int pinner = lowestBitPosition(next);
-            pin |= BATT3(pinner, pieces) & BATT3(position, pieces) & own;
-            next = nextLowestBit(next);
-        }
-        next = BXRAY4(position, pieces) & bishopQueen & enemy;
-        while (next != 0) {
-            int pinner = lowestBitPosition(next);
-            pin |= BATT4(pinner, pieces) & BATT4(position, pieces) & own;
+            pin |= bishopRay(pinner, pieces) & bishopRay(position, pieces) & own;
             next = nextLowestBit(next);
         }
         return pin;
-    }
-
-    public static long rookMove(int position, long pieces) {
-        return (RATT1(position, pieces) | RATT2(position, pieces));
-    }
-
-    public static long bishopMove(int position, long pieces) {
-        return (BATT3(position, pieces) | BATT4(position, pieces));
-    }
-
-    public static long queenMove(int position, long pieces) {
-        return (RATT1(position, pieces) | RATT2(position, pieces) | BATT3(position, pieces) | BATT4(position, pieces));
     }
 }

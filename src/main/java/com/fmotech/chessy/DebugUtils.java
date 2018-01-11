@@ -3,7 +3,11 @@ package com.fmotech.chessy;
 public class DebugUtils {
 
     public static String toHexString(long l) {
-        return String.format("%016X", l);
+        return String.format("%016x", l);
+    }
+
+    public static String toHexString(int l) {
+        return String.format("%08x", l);
     }
 
     public static String debug(long... bitBoards) {

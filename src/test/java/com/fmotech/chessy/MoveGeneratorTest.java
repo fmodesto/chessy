@@ -1,6 +1,5 @@
 package com.fmotech.chessy;
 
-import com.fmotech.chessy.oli.OliThink;
 import com.fmotech.chessy.oli.OliUtils;
 import org.junit.Test;
 
@@ -9,8 +8,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static com.fmotech.chessy.MoveTables.BATT3;
-import static com.fmotech.chessy.MoveTables.BATT4;
 import static com.fmotech.chessy.MoveTables.DIR;
 import static com.fmotech.chessy.MoveTables.RATT1;
 import static com.fmotech.chessy.MoveTables.RATT2;
@@ -126,12 +123,12 @@ public class MoveGeneratorTest {
                 if ((RATT2(i, 0) & RATT2(j, 0)) != 0) {
                     assertEquals(i + " " + j, 2, DIR(i, j));
                 }
-                if ((BATT3(i, 0) & BATT3(j, 0)) != 0) {
-                    assertEquals(i + " " + j, 3, DIR(i, j));
-                }
-                if ((BATT4(i, 0) & BATT4(j, 0)) != 0) {
-                    assertEquals(i + " " + j, 4, DIR(i, j));
-                }
+//                if ((BATT3(i, 0) & BATT3(j, 0)) != 0) {
+//                    assertEquals(i + " " + j, 3, DIR(i, j));
+//                }
+//                if ((BATT4(i, 0) & BATT4(j, 0)) != 0) {
+//                    assertEquals(i + " " + j, 4, DIR(i, j));
+//                }
             }
         }
     }

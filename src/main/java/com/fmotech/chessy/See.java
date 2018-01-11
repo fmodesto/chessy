@@ -3,15 +3,14 @@ package com.fmotech.chessy;
 import static com.fmotech.chessy.BitOperations.lowestBit;
 import static com.fmotech.chessy.Board.BISHOP;
 import static com.fmotech.chessy.Board.BLACK;
-import static com.fmotech.chessy.Board.EN_PASSANT;
 import static com.fmotech.chessy.Board.KING;
 import static com.fmotech.chessy.Board.KNIGHT;
 import static com.fmotech.chessy.Board.PAWN;
 import static com.fmotech.chessy.Board.QUEEN;
 import static com.fmotech.chessy.Board.ROOK;
 import static com.fmotech.chessy.Board.WHITE;
-import static com.fmotech.chessy.MoveGenerator.bishopMove;
-import static com.fmotech.chessy.MoveGenerator.rookMove;
+import static com.fmotech.chessy.MoveTables.bishopRay;
+import static com.fmotech.chessy.MoveTables.rookRay;
 import static com.fmotech.chessy.Utils.BIT;
 import static com.fmotech.chessy.Utils.OTHER;
 
@@ -35,7 +34,7 @@ public class See {
         gain[0] = pieceValue;
         pieceValue = MATERIAL[piece];
 
-        long rookMask = rookMove(to, 0);
+        long rookMask = rookRay(to, (long) 0);
         long rookQueen = board.get(ROOK) | board.get(QUEEN);
         long bishopQueen = board.get(BISHOP) | board.get(QUEEN);
 
@@ -43,8 +42,8 @@ public class See {
                 | MoveTables.PAWN_ATTACK[WHITE][to] & board.get(PAWN) & board.get(BLACK)
                 | MoveTables.KNIGHT[to] & board.get(KNIGHT)
                 | MoveTables.KING[to] & board.get(KING)
-                | rookMove(to, pieces) & rookQueen
-                | bishopMove(to, pieces) & bishopQueen;
+                | rookRay(to, pieces) & rookQueen
+                | bishopRay(to, pieces) & bishopQueen;
 
         int depth = 1;
         side = OTHER(side);
@@ -62,7 +61,7 @@ public class See {
             bit = lowestBit(bit);
             pieces ^= bit;
             if (piece != KNIGHT)
-                attacks |= (bit & rookMask) != 0 ? rookMove(to, pieces) & rookQueen : bishopMove(to, pieces) & bishopQueen;
+                attacks |= (bit & rookMask) != 0 ? rookRay(to, pieces) & rookQueen : bishopRay(to, pieces) & bishopQueen;
             attacks &= pieces;
 
             gain[depth] = -gain[depth - 1] + pieceValue;
