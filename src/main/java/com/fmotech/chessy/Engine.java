@@ -62,7 +62,7 @@ public class Engine {
         starttime = System.currentTimeMillis();
 
         for (iter = 1; iter <= depth; iter++) {
-            value[iter] = search(ch, board.sideToMove(), iter, 0, -32000, 32000, true, false);
+            value[iter] = search(ch, board.sideToMove(), iter, 0, -32000, 32000, iter != 1, true, false);
             t1 = (int)(System.currentTimeMillis() - starttime);
             if (abort && pvlength[0] == 0 && (iter--) != 0) break;
             if (pvlength[0] > 0) {
@@ -137,10 +137,11 @@ public class Engine {
         return hashes.add(board.hash());
     }
 
-    private int search(long ch, int c, int d, int ply, int alpha, int beta, boolean pvNode, boolean allowNullMoves) {
+    private int search(long ch, int c, int d, int ply, int alpha, int beta, boolean followPv, boolean pvNode, boolean allowNullMoves) {
 //        check();
         int oc = OTHER(c);
         int w = board.material(c) - board.material(oc);
+        boolean continuePv = false;
 
         pvlength[ply] = ply;
         if (ply == 63) return evaluation.evaluate(board, c) + w;
@@ -172,7 +173,7 @@ public class Engine {
             int R = (10 + d + nullVariance(w - beta)) / 4;
             if (R > d) R = d;
             board.doNullMove();
-            w = -search(0L, oc, d - R, ply + 1, -beta, -alpha, false, false); //Null Move Search
+            w = -search(0L, oc, d - R, ply + 1, -beta, -alpha, false,false, false); //Null Move Search
             board.undoNullMove();
             if (!abort && w >= beta) {
                 scoreTable.put(scoreHash, w + 32768);
@@ -181,14 +182,16 @@ public class Engine {
         }
 
         int hmove = 0;
-        if (ply > 0) {
+        if (followPv) {
+            hmove = retPVMove(c, ply, ch, pin);
+            continuePv = hmove != 0 && (ply + 1) != iter;
+            if (hmove == 0) hmove = moveTable.get(moveHash);
+        } else {
             hmove = moveTable.get(moveHash);
             if (d >= 4 && hmove == 0) { // Simple version of Internal Iterative Deepening
-                search(ch, c, d - 3, ply, alpha, beta, pvNode, false);
+                search(ch, c, d - 3, ply, alpha, beta, false, pvNode, false);
                 hmove = moveTable.get(moveHash);
             }
-        } else {
-            hmove = retPVMove(c, ply, ch, pin);
         }
 
         boolean first = true;
@@ -224,13 +227,13 @@ public class Engine {
                 }
 
                 if (first && pvNode) {
-                    w = -search(nch, oc, d - 1 + ext, ply + 1, -beta, -alpha, true, true);
+                    w = -search(nch, oc, d - 1 + ext, ply + 1, -beta, -alpha, continuePv, true, true);
                 } else {
-                    w = -search(nch, oc, d - 1 + ext, ply + 1, -alpha - 1, -alpha, false, true);
+                    w = -search(nch, oc, d - 1 + ext, ply + 1, -alpha - 1, -alpha, false, false, true);
                     if (w > alpha && ext < 0)
-                        w = -search(nch, oc, d - 1, ply + 1, -alpha - 1, -alpha, false, true);
+                        w = -search(nch, oc, d - 1, ply + 1, -alpha - 1, -alpha, false, false, true);
                     if (w > alpha && w < beta && pvNode)
-                        w = -search(nch, oc, d - 1 + ext, ply + 1, -beta, -alpha, true, true);
+                        w = -search(nch, oc, d - 1 + ext, ply + 1, -beta, -alpha, false, true, true);
                 }
                 board.undoMove(m);
 

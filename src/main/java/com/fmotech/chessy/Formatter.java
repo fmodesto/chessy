@@ -4,13 +4,15 @@ import static com.fmotech.chessy.Board.BLACK;
 import static com.fmotech.chessy.Board.EN_PASSANT;
 import static com.fmotech.chessy.Board.PAWN;
 import static com.fmotech.chessy.Board.WHITE;
-import static com.fmotech.chessy.MoveTables.RATT1;
-import static com.fmotech.chessy.MoveTables.RATT2;
 import static com.fmotech.chessy.Utils.BIT;
 import static com.fmotech.chessy.Utils.SYMBOLS;
 import static com.fmotech.chessy.Utils.TEST;
+import static java.util.stream.IntStream.range;
 
 public class Formatter {
+
+    private static final long[] FILE = range(0, 8).mapToLong(i -> 0x0101010101010101L << i).toArray();
+    private static final long[] RANK = range(0, 8).mapToLong(i -> 0x00000000000000ffL << (8 * i)).toArray();
 
     public static int moveFromSan(Board board, String move) {
         if (move.startsWith("O-O-O")) move = board.sideToMove() == BLACK ? "Kc8" : "Kc1";
@@ -25,8 +27,8 @@ public class Formatter {
         int to = (move.charAt(end--) - '1') * 8 + (move.charAt(end--) - 'a');
         long target = 0;
         for (int i = start; i <= end; i++) {
-            if (move.charAt(i) >= 'a' && move.charAt(i) <= 'h') target |= BIT(move.charAt(i) - 'a') | RATT2(move.charAt(i) - 'a', 0);
-            if (move.charAt(i) >= '1' && move.charAt(i) <= '8') target |= BIT(move.charAt(i) - '1') | RATT1(8 * (move.charAt(i) - '1'), 0);
+            if (move.charAt(i) >= 'a' && move.charAt(i) <= 'h') target |= FILE[move.charAt(i) - 'a'];
+            if (move.charAt(i) >= '1' && move.charAt(i) <= '8') target |= RANK[move.charAt(i) - '1'];
         }
         target = target == 0 ? -1 : target;
 

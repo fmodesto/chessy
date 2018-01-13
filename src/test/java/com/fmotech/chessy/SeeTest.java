@@ -1,13 +1,11 @@
 package com.fmotech.chessy;
 
 import com.fmotech.chessy.oli.OliUtils;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-import static com.fmotech.chessy.Formatter.moveToFen;
 import static com.fmotech.chessy.MoveGenerator.attackingPieces;
 import static com.fmotech.chessy.MoveGenerator.generate;
 import static com.fmotech.chessy.MoveGenerator.pinnedPieces;

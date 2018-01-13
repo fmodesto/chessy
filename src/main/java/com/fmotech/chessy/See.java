@@ -3,14 +3,15 @@ package com.fmotech.chessy;
 import static com.fmotech.chessy.BitOperations.lowestBit;
 import static com.fmotech.chessy.Board.BISHOP;
 import static com.fmotech.chessy.Board.BLACK;
+import static com.fmotech.chessy.Board.EN_PASSANT;
 import static com.fmotech.chessy.Board.KING;
 import static com.fmotech.chessy.Board.KNIGHT;
 import static com.fmotech.chessy.Board.PAWN;
 import static com.fmotech.chessy.Board.QUEEN;
 import static com.fmotech.chessy.Board.ROOK;
 import static com.fmotech.chessy.Board.WHITE;
-import static com.fmotech.chessy.MoveTables.bishopRay;
-import static com.fmotech.chessy.MoveTables.rookRay;
+import static com.fmotech.chessy.MagicBitboard.bishopRay;
+import static com.fmotech.chessy.MagicBitboard.rookRay;
 import static com.fmotech.chessy.Utils.BIT;
 import static com.fmotech.chessy.Utils.OTHER;
 
@@ -29,7 +30,7 @@ public class See {
         int piece = Move.piece(move);
 
         long pieces = (board.get(WHITE) | board.get(Board.BLACK)) ^ BIT(from);
-//        if (Move.capture(move) == EN_PASSANT) pieces ^= board.enPassantPawn(side);
+        if (Move.capture(move) == EN_PASSANT) pieces ^= board.enPassantPawn(side);
 
         gain[0] = pieceValue;
         pieceValue = MATERIAL[piece];
@@ -38,10 +39,10 @@ public class See {
         long rookQueen = board.get(ROOK) | board.get(QUEEN);
         long bishopQueen = board.get(BISHOP) | board.get(QUEEN);
 
-        long attacks = MoveTables.PAWN_ATTACK[BLACK][to] & board.get(PAWN) & board.get(WHITE)
-                | MoveTables.PAWN_ATTACK[WHITE][to] & board.get(PAWN) & board.get(BLACK)
-                | MoveTables.KNIGHT[to] & board.get(KNIGHT)
-                | MoveTables.KING[to] & board.get(KING)
+        long attacks = MagicBitboard.PAWN_ATTACK[BLACK][to] & board.get(PAWN) & board.get(WHITE)
+                | MagicBitboard.PAWN_ATTACK[WHITE][to] & board.get(PAWN) & board.get(BLACK)
+                | MagicBitboard.KNIGHT[to] & board.get(KNIGHT)
+                | MagicBitboard.KING[to] & board.get(KING)
                 | rookRay(to, pieces) & rookQueen
                 | bishopRay(to, pieces) & bishopQueen;
 

@@ -8,9 +8,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static com.fmotech.chessy.MoveTables.DIR;
-import static com.fmotech.chessy.MoveTables.RATT1;
-import static com.fmotech.chessy.MoveTables.RATT2;
 import static java.time.LocalDateTime.now;
 import static java.time.temporal.ChronoUnit.MILLIS;
 import static org.junit.Assert.assertEquals;
@@ -108,27 +105,6 @@ public class MoveGeneratorTest {
         for (String move : chessy.keySet()) {
             if (oli.getOrDefault(move, -1L) != (long) chessy.getOrDefault(move, -2L)) {
                 System.out.println(move + " Expected: " + oli.get(move) + " vs " + chessy.get(move));
-            }
-        }
-    }
-
-    @Test
-    public void testMask() {
-        for (int j = 0; j < 64; j++) {
-            for (int i = 0; i < 64; i++) {
-                if (i == j) continue;
-                if ((RATT1(i, 0) & RATT1(j, 0)) != 0) {
-                    assertEquals(i + " " + j, 1, DIR(i, j));
-                }
-                if ((RATT2(i, 0) & RATT2(j, 0)) != 0) {
-                    assertEquals(i + " " + j, 2, DIR(i, j));
-                }
-//                if ((BATT3(i, 0) & BATT3(j, 0)) != 0) {
-//                    assertEquals(i + " " + j, 3, DIR(i, j));
-//                }
-//                if ((BATT4(i, 0) & BATT4(j, 0)) != 0) {
-//                    assertEquals(i + " " + j, 4, DIR(i, j));
-//                }
             }
         }
     }

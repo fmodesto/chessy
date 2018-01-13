@@ -15,8 +15,8 @@ import static com.fmotech.chessy.Board.PAWN;
 import static com.fmotech.chessy.Board.QUEEN;
 import static com.fmotech.chessy.Board.ROOK;
 import static com.fmotech.chessy.Board.WHITE;
-import static com.fmotech.chessy.MagicBitboard.SEGMENT;
 import static com.fmotech.chessy.MagicBitboard.MASK;
+import static com.fmotech.chessy.MagicBitboard.SEGMENT;
 import static com.fmotech.chessy.MagicBitboard.bishopRay;
 import static com.fmotech.chessy.MagicBitboard.bishopXRay;
 import static com.fmotech.chessy.MagicBitboard.rookRay;
@@ -106,7 +106,7 @@ public class MoveGenerator {
         }
 
         if (board.enPassantPawn(sideToMove) == check) {
-            capturers = MoveTables.PAWN_ATTACK[OTHER(sideToMove)][board.enPassantPosition()] & board.get(PAWN) & own & ~pin;
+            capturers = MagicBitboard.PAWN_ATTACK[OTHER(sideToMove)][board.enPassantPosition()] & board.get(PAWN) & own & ~pin;
             while (capturers != 0) {
                 int from = lowestBitPosition(capturers);
                 moves[moves[0]++] = Move.create(from, board.enPassantPosition(), PAWN, EN_PASSANT, 0, sideToMove);
@@ -115,7 +115,7 @@ public class MoveGenerator {
         }
 
         int king = board.kingPosition(sideToMove);
-        if ((check & (MoveTables.KNIGHT[king] | MoveTables.KING[king])) != 0) return; // Can't block
+        if ((check & (MagicBitboard.KNIGHT[king] | MagicBitboard.KING[king])) != 0) return; // Can't block
 
         long segment = SEGMENT(king, target, pieces);
         while (segment != 0) {
@@ -145,7 +145,7 @@ public class MoveGenerator {
         long enemy = board.get(OTHER(sideToMove));
         int king = board.kingPosition(sideToMove);
 
-        long next = MoveTables.KING[king] & mask;
+        long next = MagicBitboard.KING[king] & mask;
         while (next != 0) {
             int to = lowestBitPosition(next);
             long bit = BIT(to);
@@ -176,7 +176,7 @@ public class MoveGenerator {
                 }
             }
             if (RANK(from) == (sideToMove == BLACK ? 1 : 6)) {
-                long target = MoveTables.PAWN_ATTACK[sideToMove][from] & enemy & mask;
+                long target = MagicBitboard.PAWN_ATTACK[sideToMove][from] & enemy & mask;
                 registerAttackMoves(moves, sideToMove, from, PAWN, target, ROOK, board);
                 registerAttackMoves(moves, sideToMove, from, PAWN, target, BISHOP, board);
                 registerAttackMoves(moves, sideToMove, from, PAWN, target, KNIGHT, board);
@@ -188,7 +188,7 @@ public class MoveGenerator {
         while (next != 0) {
             int from = lowestBitPosition(next);
             long mask = TEST(from, pin) ? MASK(from, king) : -1;
-            long target = MoveTables.KNIGHT[from] & ~pieces & mask;
+            long target = MagicBitboard.KNIGHT[from] & ~pieces & mask;
             registerMoves(moves, sideToMove, from, KNIGHT, target);
             next = nextLowestBit(next);
         }
@@ -255,7 +255,7 @@ public class MoveGenerator {
         while (next != 0) {
             int from = lowestBitPosition(next);
             long mask = TEST(from, pin) ? MASK(from, king) : -1;
-            long target = MoveTables.PAWN_ATTACK[sideToMove][from] & (enPassant | enemy) & mask;
+            long target = MagicBitboard.PAWN_ATTACK[sideToMove][from] & (enPassant | enemy) & mask;
             if ((target & enPassant) != 0) {
                 long ray = rookRay(from, pieces ^ board.enPassantPawn(sideToMove)) & (sideToMove == WHITE ? 0x000000ff00000000L : 0x00000000ff000000L);
                 if (TEST(king, ray) && (ray & (board.get(ROOK) | board.get(QUEEN)) & enemy) != 0) {
@@ -278,7 +278,7 @@ public class MoveGenerator {
         while (next != 0) {
             int from = lowestBitPosition(next);
             long mask = TEST(from, pin) ? MASK(from, king) : -1;
-            long target = MoveTables.KNIGHT[from] & enemy & mask;
+            long target = MagicBitboard.KNIGHT[from] & enemy & mask;
             registerAttackMoves(moves, sideToMove, from, KNIGHT, target, 0, board);
             next = nextLowestBit(next);
         }
@@ -349,9 +349,9 @@ public class MoveGenerator {
     public static boolean positionAttacked(int position, int sideToMove, IBoard board) {
         long pieces = (board.get(WHITE) | board.get(BLACK)) ^ BIT(board.kingPosition(sideToMove));
         long enemy = board.get(OTHER(sideToMove));
-        if ((MoveTables.PAWN_ATTACK[sideToMove][position] & enemy & board.get(PAWN)) != 0) return true;
-        if ((MoveTables.KNIGHT[position] & enemy & board.get(KNIGHT)) != 0) return true;
-        if ((MoveTables.KING[position] & enemy & board.get(KING)) != 0) return true;
+        if ((MagicBitboard.PAWN_ATTACK[sideToMove][position] & enemy & board.get(PAWN)) != 0) return true;
+        if ((MagicBitboard.KNIGHT[position] & enemy & board.get(KNIGHT)) != 0) return true;
+        if ((MagicBitboard.KING[position] & enemy & board.get(KING)) != 0) return true;
         if ((rookRay(position, pieces) & enemy & (board.get(ROOK) | board.get(QUEEN))) != 0) return true;
         if ((bishopRay(position, pieces) & enemy & (board.get(BISHOP) | board.get(QUEEN))) != 0) return true;
         return false;
@@ -360,8 +360,8 @@ public class MoveGenerator {
     public static long attackingPieces(int position, int sideToMove, IBoard board) {
         long enemy = board.get(OTHER(sideToMove));
         long pieces = board.get(sideToMove) | enemy;
-        return MoveTables.PAWN_ATTACK[sideToMove][position] & board.get(PAWN) & enemy
-                | MoveTables.KNIGHT[position] & board.get(KNIGHT) & enemy
+        return MagicBitboard.PAWN_ATTACK[sideToMove][position] & board.get(PAWN) & enemy
+                | MagicBitboard.KNIGHT[position] & board.get(KNIGHT) & enemy
                 | rookRay(position, pieces) & (board.get(ROOK) | board.get(QUEEN)) & enemy
                 | bishopRay(position, pieces) & (board.get(BISHOP) | board.get(QUEEN)) & enemy;
     }
@@ -369,7 +369,7 @@ public class MoveGenerator {
     private static long reach(int position, int sideToMove, IBoard board) {
         long own = board.get(sideToMove);
         long pieces = board.get(OTHER(sideToMove)) | own;
-        return MoveTables.KNIGHT[position] & board.get(KNIGHT) & own
+        return MagicBitboard.KNIGHT[position] & board.get(KNIGHT) & own
                 | rookRay(position, pieces) & (board.get(ROOK) | board.get(QUEEN)) & own
                 | bishopRay(position, pieces) & (board.get(BISHOP) | board.get(QUEEN)) & own;
     }

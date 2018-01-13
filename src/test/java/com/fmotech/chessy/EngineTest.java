@@ -3,8 +3,6 @@ package com.fmotech.chessy;
 import com.fmotech.chessy.oli.OliUtils;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
-
 public class EngineTest {
 
     @Test

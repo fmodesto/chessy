@@ -3,8 +3,6 @@ package com.fmotech.chessy.epd;
 import com.fmotech.chessy.Board;
 import com.fmotech.chessy.Engine;
 import com.fmotech.chessy.oli.OliThink;
-import com.fmotech.chessy.oli.OliUtils;
-import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -12,7 +10,6 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -22,8 +19,9 @@ import static org.junit.Assert.assertEquals;
 @RunWith(Parameterized.class)
 public class EpdTests {
 
-    public static final int TIME = 60;
-    public static final int EXECUTE = -1;
+    public static final int TIME = 90;
+    public static final int EXECUTE = 179;
+    public static final int DEPTH = 64;
     private final EpdReader.Epd epd;
 
     @Parameters
@@ -59,7 +57,7 @@ public class EpdTests {
 
     private String think(String fen, int time) {
         Engine engine = new Engine(Board.load(fen));
-        String calc = engine.calc(time, 10);
+        String calc = engine.calc(time, DEPTH);
         System.out.println("Mine: " + calc);
 //        String oli = OliUtils.think(fen, time, 64);
 //        System.out.println("Oli: " + oli);

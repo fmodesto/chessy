@@ -25,12 +25,12 @@ import static com.fmotech.chessy.KoggeStone.SE;
 import static com.fmotech.chessy.KoggeStone.SW;
 import static com.fmotech.chessy.KoggeStone.W;
 import static com.fmotech.chessy.KoggeStone.shiftOne;
+import static com.fmotech.chessy.MagicBitboard.MASK;
+import static com.fmotech.chessy.MagicBitboard.bishopRay;
+import static com.fmotech.chessy.MagicBitboard.rookRay;
 import static com.fmotech.chessy.MoveGenerator.pinnedPieces;
-import static com.fmotech.chessy.MoveTables.DIR;
-import static com.fmotech.chessy.MoveTables.MASK;
-import static com.fmotech.chessy.MoveTables.bishopRay;
-import static com.fmotech.chessy.MoveTables.rookRay;
 import static com.fmotech.chessy.Utils.BIT;
+import static com.fmotech.chessy.Utils.FILE;
 import static com.fmotech.chessy.Utils.RANK;
 import static com.fmotech.chessy.Utils.TEST;
 import static java.util.Arrays.asList;
@@ -38,8 +38,8 @@ import static java.util.stream.IntStream.range;
 
 public class Evaluation {
 
-    private static final int[] KNIGHT_MOBILITY = range(0, 64).map(i -> (bitCount(MoveTables.KNIGHT[i]) - 1) * 6).toArray();
-    private static final int[] KING_MOBILITY = range(0, 64).map(i -> (bitCount(MoveTables.KNIGHT[i]) / 2) * 2).toArray();
+    private static final int[] KNIGHT_MOBILITY = range(0, 64).map(i -> (bitCount(MagicBitboard.KNIGHT[i]) - 1) * 6).toArray();
+    private static final int[] KING_MOBILITY = range(0, 64).map(i -> (bitCount(MagicBitboard.KNIGHT[i]) / 2) * 2).toArray();
 
     public static final long[][] PAWN_FREE = new long[][] {
             range(0, 64).mapToLong(Utils::BIT).map(b -> northFill(shiftOne(b, NW) | shiftOne(b, N) | shiftOne(b, NE))).toArray(),
@@ -75,7 +75,7 @@ public class Evaluation {
         int kingAttack = 0;
 
         int king = board.kingPosition(side);
-        long kingSurrounds = MoveTables.KING[board.kingPosition(otherSide)];
+        long kingSurrounds = MagicBitboard.KING[board.kingPosition(otherSide)];
         long pin = pinnedPieces(king, side, board);
 
         long own = board.get(side);
@@ -87,10 +87,10 @@ public class Evaluation {
             int from = lowestBitPosition(next);
             int ppos = PAWN_RUN[side][from];
             long m = BIT(from + (side == BLACK ? -8 : 8)) & ~pieces;
-            long attack = MoveTables.PAWN_ATTACK[side][from] & pieces;
+            long attack = MagicBitboard.PAWN_ATTACK[side][from] & pieces;
             if ((attack & kingSurrounds) != 0) kingAttack += sparseBitCount(attack & kingSurrounds) << 4;
             if (TEST(from, pin)) {
-                if (DIR(from, board.kingPosition(side)) != 2) m = 0;
+                if (FILE(from) != FILE(board.kingPosition(side))) m = 0;
             } else {
                 ppos += sparseBitCount(attack & board.get(PAWN) & own) << 2;
             }
@@ -107,7 +107,7 @@ public class Evaluation {
         while (next != 0) {
             pieceValue += 1;
             int from = lowestBitPosition(next);
-            long attack = MoveTables.KNIGHT[from];
+            long attack = MagicBitboard.KNIGHT[from];
             if ((attack & kingSurrounds) != 0) kingAttack += sparseBitCount(attack & kingSurrounds) << 4;
             if (!TEST(from, pin)) mobility += KNIGHT_MOBILITY[from];
             next = nextLowestBit(next);
