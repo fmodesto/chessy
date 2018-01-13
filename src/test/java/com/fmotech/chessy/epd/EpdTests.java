@@ -22,7 +22,7 @@ import static org.junit.Assert.assertEquals;
 @RunWith(Parameterized.class)
 public class EpdTests {
 
-    public static final int TIME = 5;
+    public static final int TIME = 60;
     public static final int EXECUTE = -1;
     private final EpdReader.Epd epd;
 
@@ -59,7 +59,7 @@ public class EpdTests {
 
     private String think(String fen, int time) {
         Engine engine = new Engine(Board.load(fen));
-        String calc = engine.calc(time, 64);
+        String calc = engine.calc(time, 10);
         System.out.println("Mine: " + calc);
 //        String oli = OliUtils.think(fen, time, 64);
 //        System.out.println("Oli: " + oli);
