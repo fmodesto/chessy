@@ -1,14 +1,7 @@
 package com.fmotech.chessy;
 
-import com.fmotech.chessy.oli.OliUtils;
 import org.junit.Test;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
-
-import static com.fmotech.chessy.MoveGenerator.attackingPieces;
-import static com.fmotech.chessy.MoveGenerator.generate;
-import static com.fmotech.chessy.MoveGenerator.pinnedPieces;
 import static org.junit.Assert.assertEquals;
 
 public class SeeTest {
@@ -56,43 +49,4 @@ public class SeeTest {
         int move = Formatter.moveFromFen(board, "g2h1q");
         assertEquals(400, see.evaluate(board, move));
     }
-
-    private int total = 0;
-
-    @Test
-    public void evaluate() throws Exception {
-        Files.lines(Paths.get("/Users/fran/IdeaProjects/chess/boards"))
-                .limit(1000000)
-                .forEach(this::testEvaluation);
-        System.out.println(total);
-    }
-
-    private void testEvaluation(String fen) {
-        Board board = Board.load(fen);
-        int[] captures = generateCaptures(board);
-        for (int i = 1; i < captures[0]; i++) {
-            total += see.evaluate(board, captures[i]);
-//            total += captures[i];
-        }
-    }
-
-    private int[] generateCaptures(Board board) {
-        int sideToMove = board.sideToMove();
-        long check = attackingPieces(board.kingPosition(sideToMove), sideToMove, board);
-        if (check != 0) return new int[] { 1 };
-        long pin = pinnedPieces(board.kingPosition(sideToMove), sideToMove, board);
-        return generate(check, pin, sideToMove, 0, true, false, false, board);
-    }
-
-    @Test
-    public void debug() {
-        String fen = "4r2k/5qp1/3n3p/1p1P1pbP/2p1pP2/2P3PB/1P2Q1N1/3R2K1 b - f3 0 37";
-        String move = "e4f3";
-        Board board = Board.load(fen);
-        int m = Formatter.moveFromFen(board, move);
-        System.out.println(m);
-        System.out.println(see.evaluate(board, m));
-        System.out.println(OliUtils.see(fen, move));
-    }
-
 }

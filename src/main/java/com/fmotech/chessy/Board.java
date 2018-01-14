@@ -5,8 +5,8 @@ import java.util.Random;
 import static com.fmotech.chessy.BitOperations.highInt;
 import static com.fmotech.chessy.BitOperations.joinInts;
 import static com.fmotech.chessy.BitOperations.lowInt;
-import static com.fmotech.chessy.Utils.BIT;
-import static com.fmotech.chessy.Utils.OTHER;
+import static com.fmotech.chessy.BoardUtils.BIT;
+import static com.fmotech.chessy.BoardUtils.OTHER;
 import static java.lang.Character.isSpaceChar;
 import static java.lang.Character.toUpperCase;
 
@@ -70,6 +70,11 @@ public class Board implements IBoard {
 
     public int ply() {
         return counter & 0x3FF;
+    }
+
+    public void executeMove(int move) {
+        doMove(move);
+        sideToMove = OTHER(sideToMove);
     }
 
     public void doMove(int move) {
@@ -169,7 +174,7 @@ public class Board implements IBoard {
                 pos += (c - '0');
             } else {
                 int side = Character.isUpperCase(c) ? WHITE : BLACK;
-                int piece = Utils.SYMBOLS.indexOf(toUpperCase(c));
+                int piece = BoardUtils.SYMBOLS.indexOf(toUpperCase(c));
                 board.bitBoards[side] |= BIT(pos);
                 board.bitBoards[piece] |= BIT(pos);
                 board.material[side] += MATERIAL[piece];

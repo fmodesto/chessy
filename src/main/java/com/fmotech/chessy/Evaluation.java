@@ -29,10 +29,10 @@ import static com.fmotech.chessy.MagicBitboard.MASK;
 import static com.fmotech.chessy.MagicBitboard.bishopRay;
 import static com.fmotech.chessy.MagicBitboard.rookRay;
 import static com.fmotech.chessy.MoveGenerator.pinnedPieces;
-import static com.fmotech.chessy.Utils.BIT;
-import static com.fmotech.chessy.Utils.FILE;
-import static com.fmotech.chessy.Utils.RANK;
-import static com.fmotech.chessy.Utils.TEST;
+import static com.fmotech.chessy.BoardUtils.BIT;
+import static com.fmotech.chessy.BoardUtils.FILE;
+import static com.fmotech.chessy.BoardUtils.RANK;
+import static com.fmotech.chessy.BoardUtils.TEST;
 import static java.util.Arrays.asList;
 import static java.util.stream.IntStream.range;
 
@@ -42,14 +42,14 @@ public class Evaluation {
     private static final int[] KING_MOBILITY = range(0, 64).map(i -> (bitCount(MagicBitboard.KNIGHT[i]) / 2) * 2).toArray();
 
     public static final long[][] PAWN_FREE = new long[][] {
-            range(0, 64).mapToLong(Utils::BIT).map(b -> northFill(shiftOne(b, NW) | shiftOne(b, N) | shiftOne(b, NE))).toArray(),
-            range(0, 64).mapToLong(Utils::BIT).map(b -> southFill(shiftOne(b, SW) | shiftOne(b, S) | shiftOne(b, SE))).toArray() };
+            range(0, 64).mapToLong(BoardUtils::BIT).map(b -> northFill(shiftOne(b, NW) | shiftOne(b, N) | shiftOne(b, NE))).toArray(),
+            range(0, 64).mapToLong(BoardUtils::BIT).map(b -> southFill(shiftOne(b, SW) | shiftOne(b, S) | shiftOne(b, SE))).toArray() };
     private static final long[][] PAWN_FILE = new long[][] {
-            range(0, 64).mapToLong(Utils::BIT).map(b -> northFill(shiftOne(b, N))).toArray(),
-            range(0, 64).mapToLong(Utils::BIT).map(b -> southFill(shiftOne(b, S))).toArray() };
+            range(0, 64).mapToLong(BoardUtils::BIT).map(b -> northFill(shiftOne(b, N))).toArray(),
+            range(0, 64).mapToLong(BoardUtils::BIT).map(b -> southFill(shiftOne(b, S))).toArray() };
     private static final long[][] PAWN_HELP = new long[][] {
-            range(0, 64).mapToLong(Utils::BIT).map(b -> shiftOne(b, W) | shiftOne(b, SW) | shiftOne(b, SE) | shiftOne(b, E)).toArray(),
-            range(0, 64).mapToLong(Utils::BIT).map(b -> shiftOne(b, W) | shiftOne(b, NW) | shiftOne(b, NE) | shiftOne(b, E)).toArray() };
+            range(0, 64).mapToLong(BoardUtils::BIT).map(b -> shiftOne(b, W) | shiftOne(b, SW) | shiftOne(b, SE) | shiftOne(b, E)).toArray(),
+            range(0, 64).mapToLong(BoardUtils::BIT).map(b -> shiftOne(b, W) | shiftOne(b, NW) | shiftOne(b, NE) | shiftOne(b, E)).toArray() };
     private static final int[][] PAWN_RUN = new int[][] {
             range(0, 64).map(i -> asList(0, 0, 1, 8, 16, 32, 64, 128).get(RANK(i))).toArray(),
             range(0, 64).map(i -> asList(0, 0, 1, 8, 16, 32, 64, 128).get(7 - RANK(i))).toArray() };

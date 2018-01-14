@@ -8,7 +8,7 @@ import com.fmotech.chessy.IBoard;
 import com.fmotech.chessy.Move;
 import com.fmotech.chessy.MoveGenerator;
 import com.fmotech.chessy.See;
-import com.fmotech.chessy.Utils;
+import com.fmotech.chessy.BoardUtils;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -217,7 +217,7 @@ public class OliThink {
 
 		@Override
 		public long enPassant(int sideToMove) {
-			return Utils.BIT(ENPASS()) & (sideToMove == 1 ? 0xFF0000L : 0xFF0000000000L);
+			return BoardUtils.BIT(ENPASS()) & (sideToMove == 1 ? 0xFF0000L : 0xFF0000000000L);
 		}
 
 		@Override

@@ -12,8 +12,8 @@ import static com.fmotech.chessy.Board.ROOK;
 import static com.fmotech.chessy.Board.WHITE;
 import static com.fmotech.chessy.MagicBitboard.bishopRay;
 import static com.fmotech.chessy.MagicBitboard.rookRay;
-import static com.fmotech.chessy.Utils.BIT;
-import static com.fmotech.chessy.Utils.OTHER;
+import static com.fmotech.chessy.BoardUtils.BIT;
+import static com.fmotech.chessy.BoardUtils.OTHER;
 
 public class See {
 

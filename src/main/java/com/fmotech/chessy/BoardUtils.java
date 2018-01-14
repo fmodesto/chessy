@@ -2,7 +2,7 @@ package com.fmotech.chessy;
 
 import static com.fmotech.chessy.Board.BLACK;
 
-public class Utils {
+public class BoardUtils {
     public static final String SYMBOLS = "··PNBRQK";
 
     public static long BIT(int i) { return 1L << i; }

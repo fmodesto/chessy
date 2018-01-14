@@ -11,7 +11,7 @@ import static com.fmotech.chessy.KoggeStone.SW;
 import static com.fmotech.chessy.KoggeStone.W;
 import static com.fmotech.chessy.KoggeStone.shiftOne;
 import static com.fmotech.chessy.KoggeStone.slide;
-import static com.fmotech.chessy.Utils.BIT;
+import static com.fmotech.chessy.BoardUtils.BIT;
 import static java.util.stream.IntStream.range;
 
 public class MagicBitboard {
@@ -71,8 +71,8 @@ public class MagicBitboard {
     private static final long[] BISHOP_XRAY = initializeRays(BISHOP_MASK, BISHOP_MAGIC, 9, true, NE, SE, NW, SW);
 
     public static final long[][] PAWN_ATTACK = new long[][] {
-            range(0, 64).mapToLong(Utils::BIT).map(b -> shiftOne(b, NW) | shiftOne(b, NE)).toArray(),
-            range(0, 64).mapToLong(Utils::BIT).map(b -> shiftOne(b, SW) | shiftOne(b, SE)).toArray() };
+            range(0, 64).mapToLong(BoardUtils::BIT).map(b -> shiftOne(b, NW) | shiftOne(b, NE)).toArray(),
+            range(0, 64).mapToLong(BoardUtils::BIT).map(b -> shiftOne(b, SW) | shiftOne(b, SE)).toArray() };
     public static final long[] KNIGHT = range(0, 64).mapToLong(i -> KoggeStone.knightMove(BIT(i))).toArray();
     public static final long[] KING = range(0, 64).mapToLong(i -> KoggeStone.kingMove(BIT(i))).toArray();
 

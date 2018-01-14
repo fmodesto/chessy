@@ -20,7 +20,7 @@ public class OliUtils {
         return OliThink.moves;
     }
 
-    public static String think(String fen, int seconds, int depth) {
+    public static String think(String fen, int millis, int depth) {
         Arrays.fill(OliThink.hashDB, 0);
         Arrays.fill(OliThink.hashDP, 0);
         Arrays.fill(OliThink.history, 0);
@@ -32,7 +32,7 @@ public class OliUtils {
         }
 
         OliThink._parse_fen(fen);
-        OliThink.st = seconds;
+        OliThink.st = millis / 1000;
         OliThink.calc(depth, 0);
         return OliThink.strmove(OliThink.pv[0][0]);
     }

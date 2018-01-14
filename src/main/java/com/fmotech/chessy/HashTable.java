@@ -1,12 +1,12 @@
 package com.fmotech.chessy;
 
-public class BoardTable {
+public class HashTable {
 
     private final long[] table;
     private final long mask;
     private final long invert;
 
-    public BoardTable(int size) {
+    public HashTable(int size) {
         this.table = new long[size];
         this.mask = size - 1;
         this.invert = ~mask;

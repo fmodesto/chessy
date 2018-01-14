@@ -21,10 +21,10 @@ import static com.fmotech.chessy.MagicBitboard.bishopRay;
 import static com.fmotech.chessy.MagicBitboard.bishopXRay;
 import static com.fmotech.chessy.MagicBitboard.rookRay;
 import static com.fmotech.chessy.MagicBitboard.rookXRay;
-import static com.fmotech.chessy.Utils.BIT;
-import static com.fmotech.chessy.Utils.OTHER;
-import static com.fmotech.chessy.Utils.RANK;
-import static com.fmotech.chessy.Utils.TEST;
+import static com.fmotech.chessy.BoardUtils.BIT;
+import static com.fmotech.chessy.BoardUtils.OTHER;
+import static com.fmotech.chessy.BoardUtils.RANK;
+import static com.fmotech.chessy.BoardUtils.TEST;
 
 public class MoveGenerator {
 

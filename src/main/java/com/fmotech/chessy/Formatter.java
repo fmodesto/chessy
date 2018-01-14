@@ -4,9 +4,10 @@ import static com.fmotech.chessy.Board.BLACK;
 import static com.fmotech.chessy.Board.EN_PASSANT;
 import static com.fmotech.chessy.Board.PAWN;
 import static com.fmotech.chessy.Board.WHITE;
-import static com.fmotech.chessy.Utils.BIT;
-import static com.fmotech.chessy.Utils.SYMBOLS;
-import static com.fmotech.chessy.Utils.TEST;
+import static com.fmotech.chessy.BoardUtils.BIT;
+import static com.fmotech.chessy.BoardUtils.SYMBOLS;
+import static com.fmotech.chessy.BoardUtils.TEST;
+import static java.lang.Character.toUpperCase;
 import static java.util.stream.IntStream.range;
 
 public class Formatter {
@@ -23,7 +24,7 @@ public class Formatter {
         int start = 0;
         int end = move.length() - 1;
         int piece = Character.isUpperCase(move.charAt(start)) ? SYMBOLS.indexOf(move.charAt(start++)) : PAWN;
-        int promotion = Character.isDigit(move.charAt(end)) ? 0 : SYMBOLS.indexOf(move.charAt(end--));
+        int promotion = Character.isDigit(move.charAt(end)) ? 0 : SYMBOLS.indexOf(toUpperCase(move.charAt(end--)));
         int to = (move.charAt(end--) - '1') * 8 + (move.charAt(end--) - 'a');
         long target = 0;
         for (int i = start; i <= end; i++) {
@@ -43,7 +44,7 @@ public class Formatter {
     }
 
     public static int moveFromFen(Board board, String move) {
-        int promotion = move.length() == 5 ? SYMBOLS.indexOf(move.charAt(4)) : 0;
+        int promotion = move.length() == 5 ? SYMBOLS.indexOf(toUpperCase(move.charAt(4))) : 0;
         int from = (move.charAt(0) - 'a') + 8 * (move.charAt(1) - '1');
         int to = (move.charAt(2) - 'a') + 8 * (move.charAt(3) - '1');
         int piece = board.pieceType(BIT(from));
