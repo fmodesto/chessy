@@ -10,7 +10,7 @@ import static com.fmotech.chessy.BoardUtils.OTHER;
 import static java.lang.Character.isSpaceChar;
 import static java.lang.Character.toUpperCase;
 
-public class Board implements IBoard {
+public class Board {
     private static final int CASTLE_MASK = 0x3c0;
     private static final int EN_PASSANT_MASK = 0x0000003f;
     private static final int INCREMENT_FIFTY_PLY = 0x401;
@@ -48,7 +48,6 @@ public class Board implements IBoard {
 
     private Board() {}
 
-    @Override
     public int pieceType(long bit) {
         if ((bit & bitBoards[PAWN]) != 0) return PAWN;
         if ((bit & bitBoards[KNIGHT]) != 0) return KNIGHT;
@@ -59,7 +58,6 @@ public class Board implements IBoard {
         return EN_PASSANT;
     }
 
-    @Override
     public long get(int bitBoard) {
         return bitBoards[bitBoard];
     }
@@ -264,32 +262,30 @@ public class Board implements IBoard {
         return hash ^ ZOBRIST[0x400 | flags] ^ ZOBRIST[0x800 | depth << 1 | sideToMove];
     }
 
-    @Override
     public int[] getMoveList(int ply) {
         return moveList[ply];
     }
 
-    @Override
     public long enPassant(int sideToMove) {
         return BIT(flags & EN_PASSANT_MASK) & (sideToMove == BLACK ? 0xFF0000L : 0xFF0000000000L);
     }
 
-    @Override
     public int enPassantPosition() {
         return flags & EN_PASSANT_MASK;
     }
 
-    @Override
     public long enPassantPawn(int sideToMove) {
         return sideToMove == BLACK ? enPassant(sideToMove) << 8 : enPassant(sideToMove) >>> 8;
     }
 
-    @Override
     public int castle() {
         return flags & CASTLE_MASK;
     }
 
-    @Override
+    public int castle(int side) {
+        return flags & (0x140 << side);
+    }
+
     public int kingPosition(int sideToMove) {
         return kings[sideToMove];
     }
@@ -300,5 +296,9 @@ public class Board implements IBoard {
 
     public int material(int sideToMove) {
         return material[sideToMove];
+    }
+
+    public void print() {
+        System.out.println(DebugUtils.debug(bitBoards));
     }
 }

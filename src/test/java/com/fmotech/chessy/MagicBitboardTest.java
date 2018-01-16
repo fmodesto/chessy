@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
+import java.util.Random;
 
 import static com.fmotech.chessy.BitOperations.bitCount;
 import static com.fmotech.chessy.BitOperations.permutateBoard;
@@ -41,9 +42,9 @@ public class MagicBitboardTest {
     private static final long[][] ROOK_ATTACKS = initializeRookAttacks(ROOK_PERMUTATIONS, N, S, E, W);
     private static final long[][] BISHOP_ATTACKS = initializeRookAttacks(ROOK_PERMUTATIONS, N, S, E, W);
 
-    private static long[][] initializePermutations(long[] mask) {
-        long[][] permutations = new long[64][];
-        for (int sq = 0; sq < 64; sq++) {
+    private static long[][] initializePermutations(long... mask) {
+        long[][] permutations = new long[mask.length][];
+        for (int sq = 0; sq < mask.length; sq++) {
             int numBits = BitOperations.bitCount(mask[sq]);
             permutations[sq] = new long[1 << numBits];
             for (int i = 0; i < 1 << numBits; i++) {

@@ -21,7 +21,7 @@ public class See {
 
     private int[] gain = new int[32];
 
-    public int evaluate(IBoard board, int move) {
+    public int evaluate(Board board, int move) {
         int from = Move.from(move);
         int to = Move.to(move);
         int side = Move.sideToMove(move);

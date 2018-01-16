@@ -3,6 +3,7 @@ package com.fmotech.chessy.epd;
 import com.fmotech.chessy.Board;
 import com.fmotech.chessy.Engine;
 import com.fmotech.chessy.oli.OliThink;
+import com.fmotech.chessy.oli.OliUtils;
 import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -19,7 +20,7 @@ import static org.junit.Assert.assertEquals;
 @RunWith(Parameterized.class)
 public class EpdTests {
 
-    public static final int TIME = 5;
+    public static final int TIME = 5000;
     public static final int EXECUTE = -1;
     public static final int DEPTH = 64;
     private final EpdReader.Epd epd;
@@ -38,7 +39,6 @@ public class EpdTests {
 
     @Test
     public void execute() {
-        OliThink.hashes.clear();
         System.out.println(epd.fen);
         String bm = EpdReader.getFen(epd, "bm");
         String am = EpdReader.getFen(epd, "am");
@@ -56,16 +56,10 @@ public class EpdTests {
 
     private String think(String fen, int time) {
         Engine engine = new Engine(Board.load(fen));
-        String calc = engine.think(1000 * time, DEPTH);
+        String calc = engine.think(time, DEPTH);
         System.out.println("Move: " + calc);
-//        String oli = OliUtils.think(fen, time, 64);
-//        System.out.println("Oli: " + oli);
-//        for (int i = 0; i < Math.min(OliThink.hashes.size(), Engine.hashes.size()); i++) {
-//            if (OliThink.hashes.get(i) != (long) Engine.hashes.get(i)) {
-//                System.err.println("FAILURE AT " + i);
-//                throw new AssertionError("FAILURE AT " + i);
-//            }
-//        }
+//        String calc = OliUtils.think(fen, time, DEPTH);
+//        System.out.println("Oli: " + calc);
         return calc;
     }
 
