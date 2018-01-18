@@ -12,7 +12,7 @@ import static java.lang.Character.toUpperCase;
 
 public class Board {
     private static final int CASTLE_MASK = 0x3c0;
-    private static final int EN_PASSANT_MASK = 0x0000003f;
+    private static final int EN_PASSANT_MASK = 0x03f;
     private static final int INCREMENT_FIFTY_PLY = 0x401;
     private static final int FIFTY_MASK = 0x3ff;
     private static final int CASTLING_MASK = 0x140;
@@ -32,6 +32,7 @@ public class Board {
     private static final int[] CASTLE_REVOKE = createCastleRevoke();
     private static final int[] CASTLE_ROOK = createCastleRook();
     public static final long[] ZOBRIST = createZobrist();
+    private static final long[] CASTLE = createCastle();
 
     public static final Board INIT = Board.load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
@@ -70,14 +71,10 @@ public class Board {
         return counter & 0x3FF;
     }
 
-    public void executeMove(int move) {
-        doMove(move);
-        sideToMove = OTHER(sideToMove);
-    }
-
     public void doMove(int move) {
         moveStack[ply()] = (material[0] & 0xFFFFL) << 48 | (material[1] & 0xFFFFL) << 32 | (flags & 0x3FFL) << 22 | counter;
         move(move);
+        sideToMove = OTHER(Move.sideToMove(move));
     }
 
     public void doNullMove() {
@@ -93,6 +90,7 @@ public class Board {
         material[1] = (int) ((data >>> 32) & 0xFFFF);
         flags = (int) ((data >>> 22) & 0x3FF);
         counter = (int) (data & 0x3FFFFF);
+        sideToMove = Move.sideToMove(move);
     }
 
     public void undoNullMove() {
@@ -117,7 +115,7 @@ public class Board {
             if (capture == EN_PASSANT) {
                 to = (to & 7) | (from & 56);
                 capture = PAWN;
-            } else if (capture == ROOK && (flags & CASTLE_MASK) != 0) {
+            } else if (capture == ROOK) {
                 flags &= CASTLE_REVOKE[to];
             }
             bitBoards[OTHER(sideToMove)] ^= BIT(to);
@@ -141,7 +139,7 @@ public class Board {
                 hash ^= zobrist(sideToMove, Move.promotion(move), to);
                 material[sideToMove] += MATERIAL[Move.promotion(move)] - MATERIAL[PAWN];
             }
-        } else if (piece == ROOK && (flags & CASTLE_MASK) != 0) {
+        } else if (piece == ROOK) {
             flags &= CASTLE_REVOKE[from];
         } else if (piece == KING) {
             kings[sideToMove] = kings[sideToMove] == from ? to : from;
@@ -250,6 +248,17 @@ public class Board {
         return castle;
     }
 
+    private static long[] createCastle() {
+        long[] castle = new long[16];
+        for (int i = 0; i < castle.length; i++) {
+            if ((i & 0x01) != 0) castle[i] |= BIT(7);
+            if ((i & 0x02) != 0) castle[i] |= BIT(63);
+            if ((i & 0x04) != 0) castle[i] |= BIT(0);
+            if ((i & 0x08) != 0) castle[i] |= BIT(56);
+        }
+        return castle;
+    }
+
     public long hash() {
         return hash;
     }
@@ -270,20 +279,12 @@ public class Board {
         return BIT(flags & EN_PASSANT_MASK) & (sideToMove == BLACK ? 0xFF0000L : 0xFF0000000000L);
     }
 
-    public int enPassantPosition() {
-        return flags & EN_PASSANT_MASK;
-    }
-
     public long enPassantPawn(int sideToMove) {
         return sideToMove == BLACK ? enPassant(sideToMove) << 8 : enPassant(sideToMove) >>> 8;
     }
 
-    public int castle() {
-        return flags & CASTLE_MASK;
-    }
-
-    public int castle(int side) {
-        return flags & (0x140 << side);
+    public long castle(int side) {
+        return CASTLE[(flags & CASTLE_MASK) >>> 6] & bitBoards[side];
     }
 
     public int kingPosition(int sideToMove) {

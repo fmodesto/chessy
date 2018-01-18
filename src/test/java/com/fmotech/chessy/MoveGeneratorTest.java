@@ -15,7 +15,7 @@ import static org.junit.Assert.assertEquals;
 
 public class MoveGeneratorTest {
 
-    private static final int SKIP = 1;
+    private static final int SKIP = 0;
 
     @Test
     public void perftTests() {
@@ -84,9 +84,32 @@ public class MoveGeneratorTest {
 
     @Test
     public void debug2() {
-        String fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        String fen = "8/2p5/2Kp4/1P3k2/1R3p2/8/4P1P1/7r w - - 1 2";
+//      String fen = "8/2p5/2Kp4/1P3k1r/1R3p2/8/4P1P1/8 b - - 0 1";
+//        3:       4590/4572 in      0 ms
+//      String fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
 //        String fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K1R1 b Qkq - 1 1";
-        int depth = 3;
+
+//        8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1
+//        1:         14 in      0 ms
+//        2:        191 in      0 ms
+//        3:       2812 in      1 ms
+//        4:      43238 in      3 ms
+//        5:     674543 in     39 ms
+//
+//        java.lang.AssertionError:
+//        Expected :674624
+//        Actual   :674543
+//
+//        8/2p5/2Kp4/1P3k1r/1R3p2/8/4P1P1/8 b - - 0 1
+//        1:         16 in      0 ms
+//        2:        269 in      0 ms
+//        3:       4572 in      0 ms
+//
+//        java.lang.AssertionError:
+//        Expected :4590
+//        Actual   :4572
+        int depth = 2;
 
         long l = MoveGenerator.countMoves(depth, Board.load(fen), true);
         System.out.println(l);

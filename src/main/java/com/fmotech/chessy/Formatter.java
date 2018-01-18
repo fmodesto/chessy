@@ -33,7 +33,7 @@ public class Formatter {
         }
         target = target == 0 ? -1 : target;
 
-        int[] moves = MoveGenerator.generate(board);
+        int[] moves = MoveGenerator.generate(board, 0, 0, 0);
         for (int i = 1; i < moves[0]; i++) {
             if (Move.piece(moves[i]) != piece) continue;
             if (Move.to(moves[i]) != to) continue;

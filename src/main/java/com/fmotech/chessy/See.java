@@ -10,10 +10,10 @@ import static com.fmotech.chessy.Board.PAWN;
 import static com.fmotech.chessy.Board.QUEEN;
 import static com.fmotech.chessy.Board.ROOK;
 import static com.fmotech.chessy.Board.WHITE;
-import static com.fmotech.chessy.MagicBitboard.bishopRay;
-import static com.fmotech.chessy.MagicBitboard.rookRay;
 import static com.fmotech.chessy.BoardUtils.BIT;
 import static com.fmotech.chessy.BoardUtils.OTHER;
+import static com.fmotech.chessy.MagicBitboard.bishopMove;
+import static com.fmotech.chessy.MagicBitboard.rookMove;
 
 public class See {
 
@@ -35,16 +35,16 @@ public class See {
         gain[0] = pieceValue;
         pieceValue = MATERIAL[piece];
 
-        long rookMask = rookRay(to, (long) 0);
+        long rookMask = rookMove(to, (long) 0);
         long rookQueen = board.get(ROOK) | board.get(QUEEN);
         long bishopQueen = board.get(BISHOP) | board.get(QUEEN);
 
-        long attacks = MagicBitboard.PAWN_ATTACK[BLACK][to] & board.get(PAWN) & board.get(WHITE)
-                | MagicBitboard.PAWN_ATTACK[WHITE][to] & board.get(PAWN) & board.get(BLACK)
-                | MagicBitboard.KNIGHT[to] & board.get(KNIGHT)
-                | MagicBitboard.KING[to] & board.get(KING)
-                | rookRay(to, pieces) & rookQueen
-                | bishopRay(to, pieces) & bishopQueen;
+        long attacks = MagicBitboard.pawnAttack(to, BLACK) & board.get(PAWN) & board.get(WHITE)
+                | MagicBitboard.pawnAttack(to,WHITE) & board.get(PAWN) & board.get(BLACK)
+                | MagicBitboard.knightMove(to) & board.get(KNIGHT)
+                | MagicBitboard.kingMove(to) & board.get(KING)
+                | rookMove(to, pieces) & rookQueen
+                | bishopMove(to, pieces) & bishopQueen;
 
         int depth = 1;
         side = OTHER(side);
@@ -62,7 +62,7 @@ public class See {
             bit = lowestBit(bit);
             pieces ^= bit;
             if (piece != KNIGHT)
-                attacks |= (bit & rookMask) != 0 ? rookRay(to, pieces) & rookQueen : bishopRay(to, pieces) & bishopQueen;
+                attacks |= (bit & rookMask) != 0 ? rookMove(to, pieces) & rookQueen : bishopMove(to, pieces) & bishopQueen;
             attacks &= pieces;
 
             gain[depth] = -gain[depth - 1] + pieceValue;
