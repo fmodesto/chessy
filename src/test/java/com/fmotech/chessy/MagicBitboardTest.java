@@ -5,11 +5,17 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.IntStream;
 
 import static com.fmotech.chessy.BitOperations.bitCount;
 import static com.fmotech.chessy.BitOperations.permutateBoard;
+import static com.fmotech.chessy.BitOperations.southFill;
 import static com.fmotech.chessy.KoggeStone.E;
 import static com.fmotech.chessy.KoggeStone.N;
 import static com.fmotech.chessy.KoggeStone.NE;
@@ -70,22 +76,90 @@ public class MagicBitboardTest {
     }
 
     public static void main(String[] args) {
-        LocalDateTime time = now();
-        List<Long> magics = new ArrayList<>();
-        for (int i = 0; i < 64; i++) {
-            magics.add(generateMagicFor(i, ROOK_MASK, ROOK_PERMUTATIONS));
+//        LocalDateTime time = now();
+//        List<Long> magics = new ArrayList<>();
+//        for (int i = 0; i < 64; i++) {
+//            magics.add(generateMagicFor(i, ROOK_MASK, ROOK_PERMUTATIONS));
+//        }
+//        for (int i = 0; i < 64; i++) {
+//            magics.add(generateMagicFor(i, BISHOP_MASK, BISHOP_PERMUTATIONS));
+//        }
+//        for (int i = 0; i < 128; i++) {
+//            System.out.print("0x" + DebugUtils.toHexString(magics.get(i)) + "L, ");
+//            if (i % 4 == 3)
+//                System.out.println();
+//            if (i % 64 == 63)
+//                System.out.println();
+//        }
+//        System.out.println(ChronoUnit.MILLIS.between(time, now()));
+
+        Map<Long, Byte> map = new HashMap<>();
+        final int sq = 0;
+        byte c = 0;
+        for (int i = 0; i < ROOK_ATTACKS[sq].length; i++) {
+            if (!map.containsKey(ROOK_ATTACKS[sq][i])) {
+                map.put(ROOK_ATTACKS[sq][i], c++);
+            }
         }
-        for (int i = 0; i < 64; i++) {
-            magics.add(generateMagicFor(i, BISHOP_MASK, BISHOP_PERMUTATIONS));
+        byte[] indexes = new byte[ROOK_ATTACKS[sq].length];
+        for (int i = 0; i < indexes.length; i++) {
+            indexes[i] = map.get(ROOK_ATTACKS[sq][i]);
         }
-        for (int i = 0; i < 128; i++) {
-            System.out.print("0x" + DebugUtils.toHexString(magics.get(i)) + "L, ");
-            if (i % 4 == 3)
-                System.out.println();
-            if (i % 64 == 63)
-                System.out.println();
+        System.out.println(Arrays.toString(indexes));
+
+        int[] freq = new int[49];
+        for (int i = 0; i < indexes.length; i++) {
+            freq[indexes[i]]++;
         }
-        System.out.println(ChronoUnit.MILLIS.between(time, now()));
+        System.out.println(Arrays.toString(freq));
+        for (int i = 0; i < indexes.length; i++) {
+            if (freq[indexes[i]] == 1) System.out.println(i);
+        }
+
+        long mask = (1L << 49) - 1;
+        for (int i = 0; i < indexes.length && mask != 0; i++) {
+            mask &= ~(1L << indexes[i]);
+            if (mask == 0) {
+                System.out.println(indexes[i] + " pos " + i);
+            }
+        }
+
+
+        LocalDateTime start = LocalDateTime.now();
+        System.out.println(Arrays.toString(indexes));
+
+        AtomicLong next = new AtomicLong(10000);
+        AtomicLong total = new AtomicLong(0);
+        IntStream.range(1, 4).parallel().forEach(i -> {
+            long high = (1 << i) - 1;
+            long maxHigh = next(high << (32 - i));
+            while (high != maxHigh) {
+//                if (total.get() > next.get()) {
+//                    System.out.println(total);
+//                    next.addAndGet(10000);
+//                }
+                long h = high;
+                for (int j = 1; j < 6; j++) {
+                    long[] usedBy = new long[1 << 11];
+                    long low = (1 << j) - 1;
+                    long maxLow = next(low << (32 - j));
+                    while (low != maxLow) {
+                        long n = ~(h << 32 | low);
+                        if (validateFancy(0, 12, indexes, n)) {
+                            System.out.println(DebugUtils.toHexString(n));
+                            System.exit(0);
+                        }
+                        total.addAndGet(1);
+                        low = next(low);
+                    }
+                }
+                high = next(high);
+            }
+            System.out.println(ChronoUnit.MILLIS.between(start, LocalDateTime.now()));
+        });
+
+        System.out.println(total);
+        System.out.println(ChronoUnit.MILLIS.between(start, LocalDateTime.now()));
     }
 
     static long generateMagicFor(int sq, long[] mask, long[][] permutations) {
@@ -116,7 +190,22 @@ public class MagicBitboardTest {
         return !usedBy.get(0);
     }
 
+    static final long[] empty = new long[1 << 11];
+
+    static boolean validateFancy(int pos, int bitCount, byte[] indexes, long magicNumber) {
+//        System.arraycopy(empty, 0, usedBy, 0, usedBy.length);
+        long mask = (1L << 49) - 1;
+        long[] permutation = ROOK_PERMUTATIONS[pos];
+        for (int i = 0; i < permutation.length; i++) {
+            long p = permutation[i];
+            int index = (int) ((p * magicNumber) >>> (65 - bitCount));
+            mask &= ~(1L << indexes[index]);
+        }
+        return mask == 0;
+    }
+
     static boolean validateFancy(int pos, int bitCount, long[] usedBy, long magicNumber) {
+//        System.arraycopy(empty, 0, usedBy, 0, usedBy.length);
         Arrays.fill(usedBy, 0);
         long[] permutation = ROOK_PERMUTATIONS[pos];
         for (int i = 0; i < permutation.length; i++) {

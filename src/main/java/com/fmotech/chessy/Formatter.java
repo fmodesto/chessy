@@ -47,8 +47,8 @@ public class Formatter {
         int promotion = move.length() == 5 ? SYMBOLS.indexOf(toUpperCase(move.charAt(4))) : 0;
         int from = (move.charAt(0) - 'a') + 8 * (move.charAt(1) - '1');
         int to = (move.charAt(2) - 'a') + 8 * (move.charAt(3) - '1');
-        int piece = board.pieceType(BIT(from));
-        int capture = board.pieceType(BIT(to));
+        int piece = board.pieceType(from);
+        int capture = board.pieceType(to);
         int side = TEST(from, board.get(WHITE)) ? WHITE : BLACK;
         capture = capture == EN_PASSANT ? board.enPassant(side) == BIT(to) && piece == PAWN ? EN_PASSANT : 0 : capture;
         return Move.create(from, to, piece, capture, promotion, side);

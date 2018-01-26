@@ -26,17 +26,19 @@ public class Board {
     public static final int QUEEN = 6;
     public static final int KING = 7;
 
+    public static final int HASH = 8;
+
     public static final int EN_PASSANT = 1;
 
     public static final int[] MATERIAL = { 0, 100, 100, 290, 310, 500, 950, 0 };
     private static final int[] CASTLE_REVOKE = createCastleRevoke();
     private static final int[] CASTLE_ROOK = createCastleRook();
-    public static final long[] ZOBRIST = createZobrist();
+    private static final long[] ZOBRIST = createZobrist();
     private static final long[] CASTLE = createCastle();
 
     public static final Board INIT = Board.load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
-    private long[] bitBoards = new long[8];
+    private long[] bitBoards = new long[10];
     private long[] moveStack = new long[0x400];
     private int[] material = new int[2];
     private int[] kings = new int[2];
@@ -44,12 +46,12 @@ public class Board {
 
     private int flags = 0;
     private int counter = 0;
-    private long hash = 0;
     private int sideToMove = WHITE;
 
     private Board() {}
 
-    public int pieceType(long bit) {
+    public int pieceType(int position) {
+        long bit = BIT(position);
         if ((bit & bitBoards[PAWN]) != 0) return PAWN;
         if ((bit & bitBoards[KNIGHT]) != 0) return KNIGHT;
         if ((bit & bitBoards[BISHOP]) != 0) return BISHOP;
@@ -72,8 +74,10 @@ public class Board {
     }
 
     public void doMove(int move) {
-        moveStack[ply()] = (material[0] & 0xFFFFL) << 48 | (material[1] & 0xFFFFL) << 32 | (flags & 0x3FFL) << 22 | counter;
+        moveStack[ply()] = joinInts(flags, counter);
         move(move);
+        if (Move.promotion(move) != 0) material[Move.sideToMove(move)] += MATERIAL[Move.promotion(move)] - MATERIAL[PAWN];
+        if (Move.capture(move) != 0) material[OTHER(Move.sideToMove(move))] -= MATERIAL[Move.capture(move)];
         sideToMove = OTHER(Move.sideToMove(move));
     }
 
@@ -81,15 +85,16 @@ public class Board {
         moveStack[ply()] = joinInts(flags, counter);
         flags &= CASTLE_MASK;
         counter += INCREMENT_FIFTY_PLY;
+        sideToMove = OTHER(sideToMove);
     }
 
     public void undoMove(int move) {
         long data = moveStack[ply() - 1];
         move(move);
-        material[0] = (int) ((data >>> 48) & 0xFFFF);
-        material[1] = (int) ((data >>> 32) & 0xFFFF);
-        flags = (int) ((data >>> 22) & 0x3FF);
-        counter = (int) (data & 0x3FFFFF);
+        if (Move.promotion(move) != 0) material[Move.sideToMove(move)] -= MATERIAL[Move.promotion(move)] - MATERIAL[PAWN];
+        if (Move.capture(move) != 0) material[OTHER(Move.sideToMove(move))] += MATERIAL[Move.capture(move)];
+        flags = highInt(data);
+        counter = lowInt(data);
         sideToMove = Move.sideToMove(move);
     }
 
@@ -97,6 +102,7 @@ public class Board {
         long data = moveStack[ply() - 1];
         flags = highInt(data);
         counter = lowInt(data);
+        sideToMove = OTHER(sideToMove);
     }
 
     private void move(int move) {
@@ -108,21 +114,20 @@ public class Board {
 
         bitBoards[sideToMove] ^= BIT(from) | BIT(to);
         bitBoards[piece] ^= BIT(from) | BIT(to);
-        hash ^= zobrist(sideToMove, piece, from);
-        hash ^= zobrist(sideToMove, piece, to);
+        bitBoards[HASH] ^= zobrist(sideToMove, piece, from);
+        bitBoards[HASH] ^= zobrist(sideToMove, piece, to);
 
         if (capture != 0) {
             if (capture == EN_PASSANT) {
-                to = (to & 7) | (from & 56);
+                to = (from & 0x38) | (to & 0x07);
                 capture = PAWN;
             } else if (capture == ROOK) {
                 flags &= CASTLE_REVOKE[to];
             }
             bitBoards[OTHER(sideToMove)] ^= BIT(to);
             bitBoards[capture] ^= BIT(to);
-            hash ^= zobrist(OTHER(sideToMove), capture, to);
+            bitBoards[HASH] ^= zobrist(OTHER(sideToMove), capture, to);
             counter &= FIFTY_MASK;
-            material[OTHER(sideToMove)] -= MATERIAL[capture];
         }
 
         flags &= CASTLE_MASK;
@@ -135,9 +140,8 @@ public class Board {
             } else if (to < 8 || to >= 56) {
                 bitBoards[piece] ^= BIT(to);
                 bitBoards[Move.promotion(move)] ^= BIT(to);
-                hash ^= zobrist(sideToMove, piece, to);
-                hash ^= zobrist(sideToMove, Move.promotion(move), to);
-                material[sideToMove] += MATERIAL[Move.promotion(move)] - MATERIAL[PAWN];
+                bitBoards[HASH] ^= zobrist(sideToMove, piece, to);
+                bitBoards[HASH] ^= zobrist(sideToMove, Move.promotion(move), to);
             }
         } else if (piece == ROOK) {
             flags &= CASTLE_REVOKE[from];
@@ -147,8 +151,8 @@ public class Board {
             if (((from ^ to) & 3) == 2) {
                 bitBoards[sideToMove] ^= BIT(Move.from(CASTLE_ROOK[to])) | BIT(Move.to(CASTLE_ROOK[to]));
                 bitBoards[ROOK] ^= BIT(Move.from(CASTLE_ROOK[to])) | BIT(Move.to(CASTLE_ROOK[to]));
-                hash ^= zobrist(sideToMove, ROOK, Move.from(CASTLE_ROOK[to]));
-                hash ^= zobrist(sideToMove, ROOK, Move.to(CASTLE_ROOK[to]));
+                bitBoards[HASH] ^= zobrist(sideToMove, ROOK, Move.from(CASTLE_ROOK[to]));
+                bitBoards[HASH] ^= zobrist(sideToMove, ROOK, Move.to(CASTLE_ROOK[to]));
             }
         }
     }
@@ -174,7 +178,7 @@ public class Board {
                 board.bitBoards[side] |= BIT(pos);
                 board.bitBoards[piece] |= BIT(pos);
                 board.material[side] += MATERIAL[piece];
-                board.hash ^= board.zobrist(side, piece, pos);
+                board.bitBoards[HASH] ^= board.zobrist(side, piece, pos);
                 if (piece == KING)
                     board.kings[side] = pos;
                 pos += 1;
@@ -260,15 +264,15 @@ public class Board {
     }
 
     public long hash() {
-        return hash;
+        return bitBoards[HASH];
     }
 
     public long hash(int sideToMove) {
-        return hash ^ ZOBRIST[0x400 | (sideToMove << 11) | flags];
+        return bitBoards[HASH] ^ ZOBRIST[0x400 | (sideToMove << 11) | flags];
     }
 
     public long hash(int sideToMove, int depth) {
-        return hash ^ ZOBRIST[0x400 | flags] ^ ZOBRIST[0x800 | depth << 1 | sideToMove];
+        return bitBoards[HASH] ^ ZOBRIST[0x400 | flags] ^ ZOBRIST[0x800 | depth << 1 | sideToMove];
     }
 
     public int[] getMoveList(int ply) {

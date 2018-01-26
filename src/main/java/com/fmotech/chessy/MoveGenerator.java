@@ -39,9 +39,12 @@ public class MoveGenerator {
     public static long countMoves(int depth, Board board, boolean div) {
         return perft(board, depth, div);
     }
+    public static long TST = 0;
 
     public static Map<String, Long> moves = new HashMap<>();
     static long perft(Board board, int depth, boolean div) {
+//        TST+=board.hash(board.sideToMove());
+//        if (depth == 0) return 1;
         int side = board.sideToMove();
         long count = 0L;
         long check = attackingPieces(board.kingPosition(side), side, board);
@@ -201,14 +204,13 @@ public class MoveGenerator {
             target = nextLowestBit(target);
             if (validate && positionAttacked(to, sideToMove, board))
                 continue;
-            long capture = BIT(to);
             if (promotion) {
-                moves[moves[0]++] = Move.create(from, to, piece, board.pieceType(capture), QUEEN, sideToMove);
-                moves[moves[255]--] = Move.create(from, to, piece, board.pieceType(capture), ROOK, sideToMove);
-                moves[moves[255]--] = Move.create(from, to, piece, board.pieceType(capture), BISHOP, sideToMove);
-                moves[moves[255]--] = Move.create(from, to, piece, board.pieceType(capture), KNIGHT, sideToMove);
+                moves[moves[0]++] = Move.create(from, to, piece, board.pieceType(to), QUEEN, sideToMove);
+                moves[moves[255]--] = Move.create(from, to, piece, board.pieceType(to), ROOK, sideToMove);
+                moves[moves[255]--] = Move.create(from, to, piece, board.pieceType(to), BISHOP, sideToMove);
+                moves[moves[255]--] = Move.create(from, to, piece, board.pieceType(to), KNIGHT, sideToMove);
             } else {
-                moves[moves[0]++] = Move.create(from, to, piece, board.pieceType(capture), 0, sideToMove);
+                moves[moves[0]++] = Move.create(from, to, piece, board.pieceType(to), 0, sideToMove);
             }
         }
     }
